@@ -1,0 +1,10 @@
+Use the claude_design MCP (https://api.anthropic.com/v1/design/mcp, auth via /design-login) to import this project:
+https://claude.ai/design/p/f6783801-75d2-4d17-add4-eb29ceb023ee?file=StoreScout.dc.html
+
+Focus on these files (the whole project is readable):
+- `StoreScout.dc.html`
+
+Also read these files the selection imports:
+- `support.js`
+
+Implement: `StoreScout.dc.html`

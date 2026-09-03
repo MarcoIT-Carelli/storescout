@@ -1,0 +1,48 @@
+progressivo,codice,citta,indirizzo,ragione_sociale,codice_deposito,telefono,email,attivo
+01,TE,Terlizzi,"via Cortili, 6/D",GestFood,01,0803542133,terlizzilium@carellidistribuzione.it,true
+02,GI,Giovinazzo,"via Napoli, 45",GestFood,02,0803948032,giovinazzo@carellidistribuzione.it,true
+03,SS,Bari Santo Spirito,"via Napoli, 164",GestFood,03,0805331837,sspirito@carellidistribuzione.it,true
+04,TR,Bitonto,"via Tommaso Traetta, 68",Carelli,TR,0802049007,traetta@carellidistribuzione.it,true
+05,VA,Bitonto,"via Ammiraglio Vacca, 132",Carelli,VA,0803748700,vacca@carellidistribuzione.it,true
+06,AN,Bitonto,"via Lodovico I D'Angiò, 56",Carelli,AN,0803715138,dangio@carellidistribuzione.it,true
+07,LA,Bitonto,"via Michele Larovere, 33",Carelli,LA,0808764420,larovere@carellidistribuzione.it,true
+08,TO,Toritto,"via Arturo Toscanini, 2",Carelli,TO,0802105086,toritto@carellidistribuzione.it,true
+09,PC,Palo del Colle,"c.so Vittorio Emanuele, 130",Carelli,PC,0807961360,pcorso@carellidistribuzione.it,true
+10,PU,Palo del Colle,"via Cesare Cantù, 135",Carelli,PU,0809911422,pcantu@carellidistribuzione.it,true
+11,DA,Bitonto,"via Dante Alighieri, 32",Carelli,DA,0803713658,dante@carellidistribuzione.it,true
+12,RI,Bitonto,"via Domenico Ricapito, 33/A",Carelli,RI,0803758810,ricapito@carellidistribuzione.it,true
+13,PA,Palo del Colle,via Binetto Z.I.,Carelli,PA,0809911780,palobinetto@carellidistribuzione.it,true
+14,CA,Cassano delle Murge,"via Antonio di Ceglie, 21",Carelli,CA,080776266,cassano@carellidistribuzione.it,true
+15,PL,Bari Palese Macchie,"via Amedeo di Savoia, 5",Carelli,PL,0805305699,palese@carellidistribuzione.it,true
+16,MO,Molfetta,"via Capitano de Gennaro, 58",Carelli,MO,0803354866,molfetta@carellidistribuzione.it,true
+17,CO,Corato,"via Castel del Monte, 150",Carelli,CO,0803720866,monte@carellidistribuzione.it,true
+18,CC,Corato,"via Catalano, 39",Carelli,CC,0808722463,catalano@carellidistribuzione.it,true
+19,BS,Bisceglie,"via Brindisi, 10",Carelli,BS,0803992829,bisceglie@carellidistribuzione.it,true
+20,BM,Bisceglie,"via P. Mascagni, 60",GestFood,04,0803952716,biscegliemascagni@carellidistribuzione.it,true
+21,RU,Ruvo di Puglia,"via Peucetia, 31/49",GestFood,05,0803614272,ruvo@carellidistribuzione.it,true
+22,BI,Bitetto,"via Giustino Fortunato, 13/17",GestFood,06,0802467691,bitetto@carellidistribuzione.it,true
+23,BL,Bisceglie,"via della Libertà, 206",Carelli,BL,0803953756,bisceglieliberta@carellidistribuzione.it,true
+24,TP,Terlizzi,"v.le Pacecco, 36",Carelli,TP,0803543133,terlizzipacecco@carellidistribuzione.it,true
+25,VG,Bitonto,"v.le Giovanni XXIII, 161",GestFood,07,0803747205,vialegiovanni@carellidistribuzione.it,true
+26,BB,Bari,"via Brigata Bari, 23",Carelli,BB,0805749651,brigatabari@carellidistribuzione.it,true
+27,MH,Molfetta,"v.le Papa Giovanni Paolo II, 44",GestFood,08,0802055063,molfettah@carellidistribuzione.it,true
+28,FS,Bitonto,"v.le delle Nazioni, 8",Sapori della Murgia,FS,0803756315,saporidellamurgia@carellidistribuzione.it,true
+29,GP,Giovinazzo,"via Don Francesco Piscitelli, 32",GestFood,09,0802046219,gpiscitelli@carellidistribuzione.it,true
+30,GR,Grumo Appula,"via Beato Giacomo da Bitetto, 34",GestFood,10,0808961376,grumoappula@carellidistribuzione.it,true
+31,BR,Bari,"v.le della Repubblica, 127",Carelli,BR,0802049037,barirepubblica@carellidistribuzione.it,true
+32,BZ,Bari,"via Francesco Lattanzio, 18",Carelli,BZ,0807982724,barilattanzio@carellidistribuzione.it,true
+33,BC,Bari,"via Ospedale di Venere, 107",Carelli,BC,0807987546,baricarbonara@carellidistribuzione.it,true
+34,PG,Polignano a Mare,Km. 831.400 Strada Statale 16,GestFood,PG,3496832816,polignano@carellidistribuzione.it,true
+35,BF,Bitetto,"via Ipazia di Alessandria, 6",GestFood,BF,0809924278,bitettofiammegialle@carellidistribuzione.it,true
+36,SG,Bari,"via Vito de Fano, 8-22",Carelli,SG,0806987193,sangirolamo@carellidistribuzione.it,true
+37,MN,Monopoli,"via Vittorio Veneto, 178",GestFood,MN,0808768713,monopoli@carellidistribuzione.it,true
+38,CR,Corato,"via Ruvo, 57",GestFood,11,0802101092,coratoviaruvo@carellidistribuzione.it,true
+39,BE,Bari,"via Egnazia, 27",Carelli,BE,0802042423,bariegnazia@carellidistribuzione.it,true
+42,CS,Corato,"via Antonio Santelia Architetto, 186",GestFood,12,0809021271,coratosantelia@carellidistribuzione.it,true
+43,ML,Mola di Bari,"via Lungara Porto, 7",GestFood,13,0806983770,moladibari@carellidistribuzione.it,true
+44,PO,Polignano a Mare,"via Vito Lepore, 25",GestFood,PO,0808699583,polignanolepore@carellidistribuzione.it,true
+45,CN,Conversano,"via Fratelli Rosselli, 38",GestFood,14,0809241582,conversano@carellidistribuzione.it,true
+46,VE,Bari,"via Venezia, 73",Carelli,VE,0802046241,barivenezia@carellidistribuzione.it,true
+47,EI,Bari,"via Albert Einstein, 39/B",Carelli,EI,0806929605,barieinstein@carellidistribuzione.it,true
+49,MS,Mola di Bari,"via Salvo d'Acquisto, 33",GestFood,15,0808839470,molasalvo@carellidistribuzione.it,true
+50,EC,e-commerce,,Carelli,EC,0808895619,,false

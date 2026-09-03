@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "StoreScout",
+    "slug": "storescout",
+    "version": "1.0.0",
+    "scheme": "storescout",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "android": {
+      "package": "it.carellidistribuzione.storescout",
+      "adaptiveIcon": {
+        "backgroundColor": "#111111",
+        "foregroundImage": "./assets/adaptive-icon-foreground.png",
+        "monochromeImage": "./assets/adaptive-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "backgroundColor": "#FFFFFF"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#FFFFFF",
+          "dark": {
+            "image": "./assets/splash.png",
+            "backgroundColor": "#0F0F0E"
+          }
+        }
+      ],
+      "expo-sqlite",
+      "expo-sharing"
+    ],
+    "backgroundColor": "#FFFFFF"
+  }
+}
