@@ -23,11 +23,17 @@ on:
     - cron: "0 2 * * *"      # ogni notte alle 02:00 UTC
   workflow_dispatch:
 
+env:
+  BUCKETS: "firme schede"    # bucket da salvare, separati da spazio
+
 jobs:
   backup:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Fissa la data del backup
+        run: echo "STAMP=$(date -u +%Y%m%d)" >> "$GITHUB_ENV"
 
       - name: Installa PostgreSQL client 17
         run: |
@@ -38,12 +44,12 @@ jobs:
       - name: Dump del database
         env:
           PGSSLMODE: require
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           mkdir -p backup
-          STAMP=$(date -u +%Y%m%d)
 
           # Schema applicativo: tabelle, dati, policy RLS, trigger.
-          pg_dump "${{ secrets.SUPABASE_DB_URL }}" \
+          pg_dump "$DB_URL" \
             --schema=public \
             --no-owner --no-privileges \
             --file="backup/db_${STAMP}.sql"
@@ -52,42 +58,64 @@ jobs:
           # precedente NON include: senza questo file un ripristino
           # restituisce tutti i dati ma nessuno riesce piu' ad accedere.
           # Le password sono hash bcrypt e restano valide dopo il ripristino.
-          pg_dump "${{ secrets.SUPABASE_DB_URL }}" \
+          pg_dump "$DB_URL" \
             --table=auth.users --table=auth.identities \
             --data-only --no-owner --no-privileges \
             --file="backup/auth_${STAMP}.sql"
 
-          gzip -9 "backup/db_${STAMP}.sql" "backup/auth_${STAMP}.sql"
+          # Definizione dei bucket: senza questa, al ripristino i file
+          # esistono ma non c'e' nessun bucket in cui ricaricarli.
+          pg_dump "$DB_URL" \
+            --table=storage.buckets \
+            --data-only --no-owner --no-privileges \
+            --file="backup/buckets_${STAMP}.sql"
+
+          gzip -9 backup/*.sql
           ls -lh backup/
 
-      - name: Scarica i file Storage (firme)
+      - name: Scarica i file Storage
+        env:
+          PGSSLMODE: require
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          BASE_URL: ${{ secrets.SUPABASE_URL }}
         run: |
-          mkdir -p backup/firme
-          # elenca gli oggetti del bucket privato "firme"
-          curl -s -X POST \
-            "${{ secrets.SUPABASE_URL }}/storage/v1/object/list/firme" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_KEY }}" \
-            -H "Content-Type: application/json" \
-            -d '{"prefix":"","limit":10000,"sortBy":{"column":"name","order":"asc"}}' \
-            > /tmp/lista.json
+          set -o pipefail
+          for BUCKET in $BUCKETS; do
+            echo "=== bucket: $BUCKET ==="
+            mkdir -p "backup/storage/$BUCKET"
 
-          COUNT=$(jq 'length' /tmp/lista.json)
-          echo "Oggetti trovati: $COUNT"
+            # L'elenco viene letto da storage.objects invece che dall'API:
+            # l'endpoint /object/list non e' ricorsivo e si ferma al primo
+            # livello di cartelle, quindi perderebbe i file annidati.
+            psql "$DB_URL" -At -c \
+              "select name from storage.objects
+                 where bucket_id = '$BUCKET' and name is not null" \
+              > "/tmp/lista_$BUCKET.txt"
 
-          jq -r '.[].name' /tmp/lista.json | while read -r NAME; do
-            [ -z "$NAME" ] && continue
-            mkdir -p "backup/firme/$(dirname "$NAME")"
-            curl -s -o "backup/firme/$NAME" \
-              "${{ secrets.SUPABASE_URL }}/storage/v1/object/firme/$NAME" \
-              -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_KEY }}"
+            COUNT=$(wc -l < "/tmp/lista_$BUCKET.txt")
+            echo "Oggetti trovati: $COUNT"
+
+            while IFS= read -r NAME; do
+              [ -z "$NAME" ] && continue
+              mkdir -p "backup/storage/$BUCKET/$(dirname "$NAME")"
+              curl -fsS -o "backup/storage/$BUCKET/$NAME" \
+                --get --data-urlencode "dummy=" \
+                "$BASE_URL/storage/v1/object/$BUCKET/$NAME" \
+                -H "Authorization: Bearer $SERVICE_KEY" \
+                || { echo "ERRORE nel download di $BUCKET/$NAME"; exit 1; }
+            done < "/tmp/lista_$BUCKET.txt"
           done
+          du -sh backup/storage/*
 
       - name: Comprimi e cifra
+        env:
+          PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
         run: |
-          STAMP=$(date -u +%Y%m%d)
           tar -czf "backup_${STAMP}.tar.gz" -C backup .
-          gpg --batch --yes --symmetric --cipher-algo AES256 \
-            --passphrase "${{ secrets.BACKUP_PASSPHRASE }}" \
+          printf '%s' "$PASSPHRASE" | gpg --batch --yes --symmetric \
+            --cipher-algo AES256 \
+            --pinentry-mode loopback --passphrase-fd 0 \
             -o "backup_${STAMP}.tar.gz.gpg" "backup_${STAMP}.tar.gz"
           rm "backup_${STAMP}.tar.gz"
           ls -lh backup_*.gpg
@@ -102,10 +130,11 @@ jobs:
 # PER RIPRISTINARE:
 #   gpg --decrypt --passphrase "LA_PASSPHRASE" backup_AAAAMMGG.tar.gz.gpg > b.tar.gz
 #   tar -xzf b.tar.gz
-#   gunzip db_AAAAMMGG.sql.gz auth_AAAAMMGG.sql.gz
-#   psql "STRINGA_DEL_NUOVO_PROGETTO" -f db_AAAAMMGG.sql     # dati e struttura
-#   psql "STRINGA_DEL_NUOVO_PROGETTO" -f auth_AAAAMMGG.sql   # utenti e password
-#   poi ricarica la cartella firme/ nel bucket "firme".
+#   gunzip db_AAAAMMGG.sql.gz auth_AAAAMMGG.sql.gz buckets_AAAAMMGG.sql.gz
+#   psql "STRINGA_DEL_NUOVO_PROGETTO" -f db_AAAAMMGG.sql       # dati e struttura
+#   psql "STRINGA_DEL_NUOVO_PROGETTO" -f auth_AAAAMMGG.sql     # utenti e password
+#   psql "STRINGA_DEL_NUOVO_PROGETTO" -f buckets_AAAAMMGG.sql  # definizione bucket
+#   poi ricarica storage/firme/ e storage/schede/ nei rispettivi bucket.
 #
 # Lo stesso dump si carica su qualunque PostgreSQL: Supabase self-hosted,
 # un server aziendale, un VPS. Nessun formato proprietario, nessun vincolo.
