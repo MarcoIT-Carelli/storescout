@@ -25,8 +25,7 @@ const SEZIONI: Sezione[] = [
     titolo: 'Ispettori',
     descrizione:
       'Creazione, rinomina, reset password e disattivazione. Nessuna eliminazione: lo storico delle ispezioni deve restare leggibile.',
-    bloccata:
-      'Creare un utente richiede la chiave service_role, che non può stare nell’app: serve prima la Edge Function del passo 12 della guida Supabase.',
+    percorso: '/ispettori',
   },
   {
     titolo: 'Punti vendita',
