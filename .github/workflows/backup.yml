@@ -5,15 +5,10 @@ name: Backup Supabase
 # incompleti sul Pro (non includono i byte dei file su Storage).
 #
 # SECRET DA CONFIGURARE (Settings > Secrets and variables > Actions):
-#   SUPABASE_DB_URL        stringa di connessione "Session pooler" (vedi note)
+#   SUPABASE_DB_URL        stringa di connessione "Session pooler" (porta 5432)
 #   SUPABASE_URL           https://xxxxxxxx.supabase.co
-#   SUPABASE_SERVICE_KEY   chiave service_role (serve per leggere i bucket privati)
+#   SUPABASE_SERVICE_KEY   chiave service_role (serve per i bucket privati)
 #   BACKUP_PASSPHRASE      passphrase lunga per cifrare il dump
-#
-# NOTA sulla stringa di connessione: in Supabase vai su
-# Project Settings > Database > Connection string e scegli "Session pooler"
-# (porta 5432). La connessione diretta e' solo IPv6 e i runner GitHub non
-# la raggiungono: e' l'errore piu' comune quando questo job fallisce.
 #
 # NOTA su GitHub: i workflow schedulati vengono disattivati dopo 60 giorni
 # senza attivita' sul repository. Controlla la pagina Actions ogni mese.
@@ -30,7 +25,7 @@ jobs:
   backup:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Fissa la data del backup
         run: echo "STAMP=$(date -u +%Y%m%d)" >> "$GITHUB_ENV"
@@ -40,6 +35,14 @@ jobs:
           sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
           curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
           sudo apt-get update && sudo apt-get install -y postgresql-client-17
+
+      - name: Verifica la stringa di connessione
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          echo "utente: $(printf '%s' "$DB_URL" | sed -E 's|.*://([^:]*):.*|\1|')"
+          echo "host:   $(printf '%s' "$DB_URL" | sed -E 's|.*@([^:/]*).*|\1|')"
+          echo "lunghezza totale: ${#DB_URL}"
 
       - name: Dump del database
         env:
@@ -106,7 +109,7 @@ jobs:
                 || { echo "ERRORE nel download di $BUCKET/$NAME"; exit 1; }
             done < "/tmp/lista_$BUCKET.txt"
           done
-          du -sh backup/storage/*
+          du -sh backup/storage/* || true
 
       - name: Comprimi e cifra
         env:
