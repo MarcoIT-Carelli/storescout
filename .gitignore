@@ -42,3 +42,7 @@ yarn-error.*
 
 # variabili locali
 .env
+
+StoreScout-collaudo.apk
+*.apk
+supabase/.temp/
