@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
+import { URL_REIMPOSTA_PASSWORD } from '@/lib/collegamenti';
 import { supabaseConfigurato } from '@/lib/env';
 import { supabase } from '@/lib/supabase';
 import type { Profilo } from '@/types/database';
@@ -102,7 +103,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const inviaResetPassword = useCallback(async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase());
+    // Senza `redirectTo` il link della mail punta al Site URL del progetto, che per
+    // un'app senza sito non porta da nessuna parte: va indirizzato al deep link.
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+      redirectTo: URL_REIMPOSTA_PASSWORD,
+    });
     if (error) throw error;
   }, []);
 

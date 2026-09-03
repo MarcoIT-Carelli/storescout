@@ -63,6 +63,11 @@ function Contenuto() {
     if (caricamento) return;
     const gruppo = segmenti[0];
 
+    // La reimpostazione via email gestisce da sé il proprio stato: apre una sessione di
+    // recupero e poi rimanda dove serve. Se la guardia intervenisse, porterebbe l'utente
+    // altrove proprio mentre sta scegliendo la nuova password.
+    if (segmenti[1] === 'reimposta-password') return;
+
     if (!autenticato && gruppo !== '(auth)') {
       router.replace('/accedi');
     } else if (autenticato && deveCambiare && segmenti[1] !== 'nuova-password') {
