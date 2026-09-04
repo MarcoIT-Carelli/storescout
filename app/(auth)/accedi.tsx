@@ -1,13 +1,5 @@
 import { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BannerStato, INATTIVO, type StatoOperazione } from '@/components/BannerStato';
 import { Button } from '@/components/Button';
@@ -17,16 +9,15 @@ import { TextField } from '@/components/TextField';
 import { supabaseConfigurato } from '@/lib/env';
 import { messaggioErrore } from '@/lib/errori';
 import { useAuth } from '@/hooks/useAuth';
-import { raggio, spazio, testo, TOCCO_MIN, useColori } from '@/theme';
+import { raggio, spazio, testo, useColori } from '@/theme';
 
 export default function Accedi() {
   const c = useColori();
-  const { accedi, inviaResetPassword, disattivato } = useAuth();
+  const { accedi, disattivato } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [stato, setStato] = useState<StatoOperazione>(INATTIVO);
-  const [reimpostazione, setReimpostazione] = useState(false);
 
   const pronto = email.trim().length > 3 && password.length > 0;
 
@@ -43,24 +34,6 @@ export default function Accedi() {
             ? 'Questo account è stato disattivato. Rivolgiti all’amministratore.'
             : messaggioErrore(e),
       });
-    }
-  };
-
-  const reimposta = async () => {
-    if (email.trim().length < 4) {
-      setStato({ tipo: 'fallito', messaggio: 'Scrivi prima il tuo indirizzo email.' });
-      return;
-    }
-    setStato({ tipo: 'inCorso', messaggio: 'Invio del messaggio…' });
-    try {
-      await inviaResetPassword(email);
-      setReimpostazione(true);
-      setStato({
-        tipo: 'riuscito',
-        messaggio: 'Ti abbiamo inviato un messaggio con le istruzioni per la nuova password.',
-      });
-    } catch (e) {
-      setStato({ tipo: 'fallito', messaggio: messaggioErrore(e) });
     }
   };
 
@@ -125,16 +98,10 @@ export default function Accedi() {
               inCorso={stato.tipo === 'inCorso'}
             />
 
-            <Pressable
-              onPress={reimposta}
-              disabled={reimpostazione}
-              style={({ pressed }) => [stili.link, pressed && { opacity: 0.5 }]}
-              accessibilityRole="button"
-            >
-              <Text style={[testo.piccolo, { color: c.testoSecondario, textDecorationLine: 'underline' }]}>
-                Password dimenticata
-              </Text>
-            </Pressable>
+            <Text style={[testo.piccolo, { color: c.testoSecondario, textAlign: 'center' }]}>
+              Password dimenticata? Chiedila all’amministratore: te ne assegna una
+              provvisoria e l’app ti chiede di sostituirla al primo accesso.
+            </Text>
           </View>
 
           {!supabaseConfigurato ? (
@@ -173,7 +140,6 @@ const stili = StyleSheet.create({
     padding: spazio.xl,
     gap: spazio.lg,
   },
-  link: { minHeight: TOCCO_MIN, alignItems: 'center', justifyContent: 'center' },
   avviso: {
     width: '100%',
     maxWidth: 460,

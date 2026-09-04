@@ -12,6 +12,16 @@ import { messaggioErrore } from '@/lib/errori';
 import { supabase } from '@/lib/supabase';
 import { raggio, spazio, testo, TOCCO_MIN, useColori } from '@/theme';
 
+/**
+ * Reimpostazione da link email. **Non è un percorso dell'app**: dentro StoreScout la
+ * password si cambia dal menu, e chi l'ha dimenticata la fa riassegnare dall'admin.
+ *
+ * Questa schermata esiste per un solo caso: l'unico amministratore resta fuori e non ha
+ * nessuno che possa riassegnargliela. In quella situazione si manda un link di recupero
+ * dalla dashboard Supabase, e serve qualcosa che lo raccolga. Perché funzioni, il Site URL
+ * del progetto deve essere `storescout://reimposta-password`.
+ */
+
 const LUNGHEZZA_MINIMA = 8;
 
 type Stato =

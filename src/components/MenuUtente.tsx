@@ -94,7 +94,7 @@ export function MenuUtente() {
                 etichetta="Amministrazione"
                 onPress={() => {
                   setAperto(false);
-                  router.push('/(admin)');
+                  router.push('/amministrazione');
                 }}
               />
             ) : null}

@@ -1,7 +1,6 @@
 import type { Session } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
-import { URL_REIMPOSTA_PASSWORD } from '@/lib/collegamenti';
 import { supabaseConfigurato } from '@/lib/env';
 import { supabase } from '@/lib/supabase';
 import type { Profilo } from '@/types/database';
@@ -15,7 +14,6 @@ type Stato = {
   accedi: (email: string, password: string) => Promise<void>;
   esci: () => Promise<void>;
   cambiaPassword: (nuova: string, attuale?: string) => Promise<void>;
-  inviaResetPassword: (email: string) => Promise<void>;
   ricaricaProfilo: () => Promise<void>;
 };
 
@@ -113,15 +111,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [profilo, sessione],
   );
 
-  const inviaResetPassword = useCallback(async (email: string) => {
-    // Senza `redirectTo` il link della mail punta al Site URL del progetto, che per
-    // un'app senza sito non porta da nessuna parte: va indirizzato al deep link.
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-      redirectTo: URL_REIMPOSTA_PASSWORD,
-    });
-    if (error) throw error;
-  }, []);
-
   const ricaricaProfilo = useCallback(async () => {
     if (sessione?.user) await caricaProfilo(sessione.user.id);
   }, [sessione, caricaProfilo]);
@@ -135,10 +124,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       accedi,
       esci,
       cambiaPassword,
-      inviaResetPassword,
       ricaricaProfilo,
     }),
-    [caricamento, sessione, profilo, disattivato, accedi, esci, cambiaPassword, inviaResetPassword, ricaricaProfilo],
+    [caricamento, sessione, profilo, disattivato, accedi, esci, cambiaPassword, ricaricaProfilo],
   );
 
   return <Contesto.Provider value={valore}>{children}</Contesto.Provider>;

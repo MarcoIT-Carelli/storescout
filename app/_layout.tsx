@@ -2,7 +2,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -59,30 +59,40 @@ function Contenuto() {
   const autenticato = Boolean(sessione && profilo?.attivo);
   const deveCambiare = Boolean(profilo?.deve_cambiare_password);
 
+  // `useSegments` restituisce un array nuovo a ogni render: usarlo come dipendenza
+  // farebbe ripartire l'effetto di continuo. Serve un valore stabile.
+  const percorso = segmenti.join('/');
+  // Un rimando richiesto e non ancora concluso non va ripetuto: la navigazione impiega
+  // qualche render a propagarsi, e insistere manda React in ciclo infinito.
+  const rimandoInCorso = useRef<string | null>(null);
+
   useEffect(() => {
     if (caricamento) return;
+
     const gruppo = segmenti[0];
+    const schermata = segmenti[1];
 
-    // La reimpostazione via email gestisce da sé il proprio stato: apre una sessione di
-    // recupero e poi rimanda dove serve. Se la guardia intervenisse, porterebbe l'utente
-    // altrove proprio mentre sta scegliendo la nuova password.
-    if (segmenti[1] === 'reimposta-password') return;
+    // La reimpostazione da link email gestisce da sé il proprio stato: apre una sessione
+    // di recupero e poi rimanda dove serve.
+    const destinazione = (() => {
+      if (schermata === 'reimposta-password') return null;
+      if (!autenticato) return gruppo === '(auth)' ? null : '/accedi';
+      if (deveCambiare) return schermata === 'nuova-password' ? null : '/nuova-password';
+      // Il cambio password volontario si apre dal menu a sessione attiva: è l'unico
+      // motivo per cui un utente autenticato ha ragione di stare nel gruppo (auth).
+      if (gruppo === '(auth)' && schermata !== 'nuova-password') return '/';
+      return null;
+    })();
 
-    if (!autenticato && gruppo !== '(auth)') {
-      router.replace('/accedi');
-    } else if (autenticato && deveCambiare && segmenti[1] !== 'nuova-password') {
-      router.replace('/nuova-password');
-    } else if (
-      autenticato &&
-      !deveCambiare &&
-      gruppo === '(auth)' &&
-      // Il cambio password volontario si apre dal menu a sessione già attiva:
-      // è l'unico caso in cui un utente autenticato ha motivo di stare qui.
-      segmenti[1] !== 'nuova-password'
-    ) {
-      router.replace('/');
+    if (!destinazione) {
+      rimandoInCorso.current = null;
+      return;
     }
-  }, [caricamento, autenticato, deveCambiare, segmenti, router]);
+    if (rimandoInCorso.current === destinazione) return;
+
+    rimandoInCorso.current = destinazione;
+    router.replace(destinazione as never);
+  }, [caricamento, autenticato, deveCambiare, percorso, segmenti, router]);
 
   return (
     <ListeProvider attivo={autenticato}>

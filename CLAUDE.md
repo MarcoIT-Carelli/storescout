@@ -181,17 +181,24 @@ Il file va rigenerato, non modificato a mano. Serve un data URI perché expo-pri
 l'HTML sul dispositivo, spesso senza rete: un riferimento a file o a URL non verrebbe
 risolto. Il marchio StoreScout resta l'identità dell'app, non del documento.
 
-### Le tre strade per la password
+### Password: si gestiscono nell'app, non per email
+
+**La posta serve a consegnare le schede, non a far entrare le persone.** Le due strade
+sono entrambe dentro l'app:
 
 1. **Cambio volontario** — menu utente, *Cambia password*: attuale, nuova, ripeti.
    La password attuale viene verificata rientrando con le vecchie credenziali, perché
    Supabase non la richiede per sostituirla e la sessione da sola non basta su un tablet
    che gira per il negozio.
-2. **Password dimenticata** — l'admin la reimposta dal pannello, la comunica a voce, e
-   l'app obbliga a cambiarla al primo accesso. Nessuna casella di posta coinvolta: è la
-   strada pensata per gli ispettori, che sul tablet la posta non ce l'hanno.
-3. **Reset via email** — link con deep link `storescout://reimposta-password`. Funziona
-   solo per chi può aprire la propria posta sul dispositivo, in pratica gli amministratori.
+2. **Password dimenticata** — l'admin la riassegna dal pannello ispettori, la comunica a
+   voce, e l'app obbliga a sostituirla al primo accesso. Nessuna casella di posta
+   coinvolta: gli ispettori sul tablet la posta non ce l'hanno.
+
+La schermata `(auth)/reimposta-password` resta ma **non è raggiungibile dall'app**: copre
+il solo caso in cui l'unico amministratore resti fuori e non ci sia nessuno che possa
+riassegnargli la password. In quel caso si manda un link di recupero dalla dashboard
+Supabase, e perché arrivi a destinazione il Site URL deve essere
+`storescout://reimposta-password`.
 
 Le password non stanno in `profili`: vivono in `auth.users` come hash bcrypt e non sono
 leggibili da nessuno, nemmeno con la chiave `service_role`. L'unica password che un
@@ -207,6 +214,34 @@ Non è un capriccio: abilitare i percorsi lunghi nel registro non risolve, perch
 incluso in CMake dell'SDK Android non dichiara la compatibilità nel proprio manifest
 (verificato sui binari di 3.22.1 e 3.31.0). Su EAS Build, che compila su Linux, il problema
 non esiste: se un giorno servissero davvero, l'esclusione va tolta solo lì.
+
+### Rotte: un solo `index` per tutta l'app
+
+I gruppi fra parentesi di expo-router **non compaiono nell'URL**. Due file `index.tsx` in
+gruppi diversi finiscono quindi sullo stesso percorso `/`, e il router non ha modo di
+sapere quale si intenda. È già successo con `(app)/index.tsx` e `(admin)/index.tsx`: l'app
+ripartiva nell'area sbagliata e dopo il login entrava in ciclo di rimandi fino al crash,
+ma solo da installazione pulita — con una sessione già salvata non si vedeva.
+
+Per questo la schermata dell'area admin si chiama `amministrazione.tsx` e non `index.tsx`.
+Regola: **un solo `index` in tutta `app/`**, quello della home.
+
+Vale anche il principio che ne è emerso: di ogni rimando ci deve essere **un solo
+responsabile**. La guardia del layout radice decide per chi non è autenticato; il layout
+admin interviene solo su chi è autenticato ma non è amministratore. Due componenti che
+rimandano insieme si rincorrono.
+
+### Collaudo prima del rilascio
+
+Provare l'app **da installazione pulita**, non solo su una già avviata:
+
+```
+adb shell pm clear it.carellidistribuzione.storescout
+adb shell am start -n it.carellidistribuzione.storescout/.MainActivity
+```
+
+poi fare il login. È il percorso di un ispettore che riceve l'APK per la prima volta, ed è
+l'unico in cui si è manifestato il crash da collisione di rotte.
 
 ### Policy mancanti su Storage
 
