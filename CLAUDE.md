@@ -175,7 +175,14 @@ admin sia dal menu utente sia dal layout della rotta.
   `auth.admin.createUser`, quindi il passo 12 della guida Supabase — lo stesso che serve
   alla milestone 8. Rinomina, cambio ruolo e attiva/disattiva invece si possono fare con
   la sola chiave anon, perché su `profili` esiste già la policy di update per gli admin.
-- *Punti vendita* e *Ispezioni ed export*: da fare.
+- *Punti vendita*: fatta. Anagrafica completa e importazione CSV. L'import **non scrive mai
+  al primo colpo**: produce un'anteprima con quante righe sono nuove, quante aggiornano e
+  quali sono scartate e perché, e solo dopo conferma tocca il database — un file sbagliato
+  riscriverebbe altrimenti quarantasei anagrafiche in silenzio. L'aggiornamento tocca solo
+  le colonne presenti nel file, così un CSV parziale non azzera i dati che non contiene.
+  L'intestazione accetta sia `ragione_sociale` sia `insegna`; una colonna `provincia` viene
+  ignorata e segnalata, perché nello schema non esiste e non serve.
+- *Ispezioni ed export*: da fare.
 
 **Milestone 11 — build e OTA.** Non iniziata. `app.json` è già predisposto (package
 `it.carellidistribuzione.storescout`, icone, splash chiara e scura, `backgroundColor`), ma
@@ -185,6 +192,16 @@ manca `eas.json` e la configurazione dell'account Expo.
 
 - Nomi dei responsabili di punto vendita (`pdv.responsabile_nome`, oggi vuoto).
 - Elenco degli ispettori con le rispettive email.
+- Le email di cinque destinatari attività su sette: CN, CATEGORY, UFFICIO MKTG,
+  UFFICIO TECNICO, UFFICIO HACCP. Si inseriscono dal pannello.
+
+### Il punto vendita EC
+
+L'ultima riga di `pdv_seed.csv` è `EC` (e-commerce): non ha indirizzo né email, e lo schema
+richiede `indirizzo not null`. L'importazione lo scarta con il motivo scritto in chiaro,
+invece di far fallire l'intero file. Nel database non c'è: i punti vendita sono 46, non 47.
+Se un domani va gestito davvero, serve decidere che indirizzo dargli — non aggiungere una
+colonna nullable, perché ogni altra scheda un indirizzo ce l'ha.
 
 ### Note sul logo del PDF
 

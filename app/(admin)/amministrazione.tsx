@@ -30,7 +30,7 @@ const SEZIONI: Sezione[] = [
   {
     titolo: 'Punti vendita',
     descrizione: 'Anagrafica completa e importazione da CSV, con aggiornamento dei record esistenti per codice.',
-    bloccata: 'In lavorazione.',
+    percorso: '/punti-vendita',
   },
   {
     titolo: 'Ispezioni ed export',
