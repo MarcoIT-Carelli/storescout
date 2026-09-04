@@ -14,7 +14,7 @@ type Stato = {
   disattivato: boolean;
   accedi: (email: string, password: string) => Promise<void>;
   esci: () => Promise<void>;
-  cambiaPassword: (nuova: string) => Promise<void>;
+  cambiaPassword: (nuova: string, attuale?: string) => Promise<void>;
   inviaResetPassword: (email: string) => Promise<void>;
   ricaricaProfilo: () => Promise<void>;
 };
@@ -91,15 +91,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const cambiaPassword = useCallback(
-    async (nuova: string) => {
+    async (nuova: string, attuale?: string) => {
+      // Supabase non richiede la password corrente per sostituirla: chi ha la sessione
+      // aperta può cambiarla e basta. Su un tablet che gira per il punto vendita è
+      // troppo poco, quindi la verifichiamo rientrando con le vecchie credenziali.
+      if (attuale) {
+        const email = profilo?.email ?? sessione?.user.email;
+        if (!email) throw new Error('Sessione non disponibile: esci e rientra.');
+        const { error } = await supabase.auth.signInWithPassword({ email, password: attuale });
+        if (error) throw new Error('password attuale errata');
+      }
+
       const { error } = await supabase.auth.updateUser({ password: nuova });
       if (error) throw error;
+
       if (profilo?.deve_cambiare_password) {
         await supabase.from('profili').update({ deve_cambiare_password: false }).eq('id', profilo.id);
         setProfilo({ ...profilo, deve_cambiare_password: false });
       }
     },
-    [profilo],
+    [profilo, sessione],
   );
 
   const inviaResetPassword = useCallback(async (email: string) => {

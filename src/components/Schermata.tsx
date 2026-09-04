@@ -27,7 +27,13 @@ export function Schermata({ titolo, sottotitolo, indietro, onIndietro, azioni, c
         <View style={[stili.testata, { borderBottomColor: c.bordo, backgroundColor: c.superficie }]}>
           {indietro ? (
             <Pressable
-              onPress={() => (onIndietro ? onIndietro() : router.back())}
+              // Una schermata aperta da deep link non ha cronologia alle spalle:
+              // senza questo controllo la freccia resterebbe inerte.
+              onPress={() => {
+                if (onIndietro) onIndietro();
+                else if (router.canGoBack()) router.back();
+                else router.replace('/');
+              }}
               style={({ pressed }) => [stili.indietro, pressed && { opacity: 0.5 }]}
               accessibilityRole="button"
               accessibilityLabel="Torna indietro"

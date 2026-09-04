@@ -48,6 +48,9 @@ export default function ReimpostaPassword() {
   const [nuova, setNuova] = useState('');
   const [ripeti, setRipeti] = useState('');
   const [inCorso, setInCorso] = useState(false);
+  // Un rifiuto della password non è un problema del link: il modulo deve restare
+  // a schermo con l'errore accanto, altrimenti l'utente non sa cosa correggere.
+  const [erroreSalvataggio, setErroreSalvataggio] = useState<string | null>(null);
 
   // Un link va consumato una volta sola: `useURL` continua a restituire lo stesso
   // valore, e senza questo controllo la schermata ripartirebbe a ogni render.
@@ -126,6 +129,7 @@ export default function ReimpostaPassword() {
 
   const salva = async () => {
     setInCorso(true);
+    setErroreSalvataggio(null);
     try {
       const { data, error } = await supabase.auth.updateUser({ password: nuova });
       if (error) throw error;
@@ -139,7 +143,7 @@ export default function ReimpostaPassword() {
       }
       setStato({ fase: 'fatta' });
     } catch (e) {
-      setStato({ fase: 'errore', messaggio: messaggioErrore(e), riprovabile: false });
+      setErroreSalvataggio(messaggioErrore(e));
     } finally {
       setInCorso(false);
     }
@@ -205,6 +209,12 @@ export default function ReimpostaPassword() {
                 autoCapitalize="none"
                 errore={diverse ? 'Le due password non coincidono.' : undefined}
               />
+
+              {erroreSalvataggio ? (
+                <View style={[stili.avviso, { backgroundColor: c.erroreSfondo, borderColor: c.errore }]}>
+                  <Text style={[testo.piccolo, { color: c.testo }]}>{erroreSalvataggio}</Text>
+                </View>
+              ) : null}
 
               <Button
                 titolo="Salva password"

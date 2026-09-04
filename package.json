@@ -37,5 +37,13 @@
     "@types/react": "~19.2.2",
     "supabase": "^2.116.0",
     "typescript": "~6.0.3"
+  },
+  "expo": {
+    "autolinking": {
+      "exclude": [
+        "react-native-gesture-handler",
+        "react-native-reanimated"
+      ]
+    }
   }
 }

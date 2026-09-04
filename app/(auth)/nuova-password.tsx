@@ -17,35 +17,63 @@ export default function NuovaPassword() {
   const router = useRouter();
   const { cambiaPassword, profilo, esci } = useAuth();
 
+  // Al primo accesso la password temporanea è appena stata digitata per entrare:
+  // richiederla di nuovo sarebbe solo un ostacolo. Negli altri casi va verificata,
+  // altrimenti basterebbe trovare il tablet sbloccato per prendersi l'account.
+  const forzato = Boolean(profilo?.deve_cambiare_password);
+
+  const [attuale, setAttuale] = useState('');
   const [nuova, setNuova] = useState('');
   const [ripeti, setRipeti] = useState('');
   const [stato, setStato] = useState<StatoOperazione>(INATTIVO);
 
   const corta = nuova.length > 0 && nuova.length < LUNGHEZZA_MINIMA;
   const diverse = ripeti.length > 0 && nuova !== ripeti;
-  const pronto = nuova.length >= LUNGHEZZA_MINIMA && nuova === ripeti;
+  const uguale = nuova.length > 0 && nuova === attuale;
+  const pronto =
+    nuova.length >= LUNGHEZZA_MINIMA &&
+    nuova === ripeti &&
+    !uguale &&
+    (forzato || attuale.length > 0);
 
   const salva = async () => {
     setStato({ tipo: 'inCorso', messaggio: 'Aggiornamento della password…' });
     try {
-      await cambiaPassword(nuova);
+      await cambiaPassword(nuova, forzato ? undefined : attuale);
       setStato({ tipo: 'riuscito', messaggio: 'Password aggiornata.' });
-      router.replace('/');
+      if (forzato) router.replace('/');
+      else {
+        setAttuale('');
+        setNuova('');
+        setRipeti('');
+      }
     } catch (e) {
       setStato({ tipo: 'fallito', messaggio: messaggioErrore(e) });
     }
   };
 
   return (
-    <Schermata>
+    <Schermata titolo={forzato ? undefined : 'Cambia password'} indietro={!forzato}>
       <ScrollView contentContainerStyle={stili.centro} keyboardShouldPersistTaps="handled">
         <View style={[stili.pannello, { backgroundColor: c.superficie, borderColor: c.bordo }]}>
-          <Text style={[testo.sezione, { color: c.testo }]}>Scegli una nuova password</Text>
-          <Text style={[testo.piccolo, { color: c.testoSecondario }]}>
-            {profilo?.deve_cambiare_password
-              ? 'La password attuale è temporanea: prima di usare l’app devi sostituirla.'
-              : 'Imposta una nuova password per il tuo accesso.'}
+          <Text style={[testo.sezione, { color: c.testo }]}>
+            {forzato ? 'Scegli una nuova password' : 'Cambia la tua password'}
           </Text>
+          <Text style={[testo.piccolo, { color: c.testoSecondario }]}>
+            {forzato
+              ? 'La password attuale è temporanea: prima di usare l’app devi sostituirla.'
+              : 'Serve la password che usi adesso, così nessun altro può cambiarla al posto tuo.'}
+          </Text>
+
+          {forzato ? null : (
+            <TextField
+              etichetta="Password attuale"
+              value={attuale}
+              onChangeText={setAttuale}
+              secureTextEntry
+              autoCapitalize="none"
+            />
+          )}
 
           <TextField
             etichetta="Nuova password"
@@ -54,7 +82,13 @@ export default function NuovaPassword() {
             secureTextEntry
             autoCapitalize="none"
             aiuto={`Almeno ${LUNGHEZZA_MINIMA} caratteri.`}
-            errore={corta ? `Servono almeno ${LUNGHEZZA_MINIMA} caratteri.` : undefined}
+            errore={
+              corta
+                ? `Servono almeno ${LUNGHEZZA_MINIMA} caratteri.`
+                : uguale
+                  ? 'Deve essere diversa da quella attuale.'
+                  : undefined
+            }
           />
 
           <TextField
@@ -76,7 +110,7 @@ export default function NuovaPassword() {
             inCorso={stato.tipo === 'inCorso'}
           />
 
-          <Button titolo="Esci" variante="testo" larghezzaPiena onPress={esci} />
+          {forzato ? <Button titolo="Esci" variante="testo" larghezzaPiena onPress={esci} /> : null}
         </View>
       </ScrollView>
     </Schermata>

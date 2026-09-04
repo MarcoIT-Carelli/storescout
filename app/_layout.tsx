@@ -72,7 +72,14 @@ function Contenuto() {
       router.replace('/accedi');
     } else if (autenticato && deveCambiare && segmenti[1] !== 'nuova-password') {
       router.replace('/nuova-password');
-    } else if (autenticato && !deveCambiare && gruppo === '(auth)') {
+    } else if (
+      autenticato &&
+      !deveCambiare &&
+      gruppo === '(auth)' &&
+      // Il cambio password volontario si apre dal menu a sessione già attiva:
+      // è l'unico caso in cui un utente autenticato ha motivo di stare qui.
+      segmenti[1] !== 'nuova-password'
+    ) {
       router.replace('/');
     }
   }, [caricamento, autenticato, deveCambiare, segmenti, router]);

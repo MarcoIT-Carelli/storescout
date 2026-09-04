@@ -8,7 +8,12 @@ export function messaggioErrore(e: unknown): string {
 
   const t = testo.toLowerCase();
 
+  if (t.includes('password attuale errata')) return 'La password attuale non è corretta.';
   if (t.includes('invalid login credentials')) return 'Email o password non corretti.';
+  if (t.includes('different from the old password') || t.includes('same_password'))
+    return 'La nuova password deve essere diversa da quella attuale.';
+  if (t.includes('password should be at least') || t.includes('weak_password'))
+    return 'Password troppo corta o troppo semplice: scegline una più lunga.';
   if (t.includes('email not confirmed')) return "L'indirizzo email non è ancora stato confermato.";
   if (t.includes('over_email_send_rate') || t.includes('rate limit'))
     return 'Troppi tentativi ravvicinati. Riprova fra qualche minuto.';
