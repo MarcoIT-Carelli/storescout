@@ -105,7 +105,7 @@ Componenti funzionali con hook. Tipi generati da Supabase in `src/types/`. Nessu
 
 ## Stato
 
-Aggiornato al 2 settembre 2026.
+Aggiornato al 4 settembre 2026.
 
 **Milestone 1 — setup.** Completata. Progetto Expo SDK 57 con TypeScript ed expo-router creato
 nella cartella; Supabase configurato con schema, policy RLS e dati di seed (47 punti vendita,
@@ -163,18 +163,18 @@ La scheda conclusa si riapre in sola lettura con attività rilevate, attività s
 PDF: è la stessa schermata che compare dopo l'invio, perché un documento firmato non si
 modifica e non serve una seconda vista.
 
-**Milestone 10 — pannello admin.** In corso, in `app/(admin)/`. L'accesso è riservato al ruolo
+**Milestone 10 — pannello admin.** Completata, in `app/(admin)/`. L'accesso è riservato al ruolo
 admin sia dal menu utente sia dal layout della rotta.
 
 - *Liste valori*: fatta. Destinatari con indirizzo email, reparti e tipi di intervento;
   aggiunta, rinomina, riordino con frecce e disattivazione. Le voci non si eliminano mai:
   le ispezioni archiviate puntano all'id e devono restare leggibili. Un avviso conta i
   destinatari attivi ancora senza indirizzo, che è il dato che blocca la milestone 8.
-- *Ispettori*: bloccata. Creare un utente richiede la chiave `service_role`, che non può
-  stare nell'app. Serve una Edge Function che verifichi il chiamante e chiami
-  `auth.admin.createUser`, quindi il passo 12 della guida Supabase — lo stesso che serve
-  alla milestone 8. Rinomina, cambio ruolo e attiva/disattiva invece si possono fare con
-  la sola chiave anon, perché su `profili` esiste già la policy di update per gli admin.
+- *Ispettori*: fatta. Creare un utente richiede la chiave `service_role`, che non può stare
+  nell'app: ci pensa la Edge Function `gestisci-ispettori`, che verifica il chiamante e poi
+  chiama `auth.admin.createUser`. È deployata e risponde 401 a chi non è admin attivo.
+  Rinomina, cambio ruolo e attiva/disattiva passano invece dalla sola chiave anon, perché su
+  `profili` la policy di update per gli admin c'è già.
 - *Punti vendita*: fatta. Anagrafica completa e importazione CSV. L'import **non scrive mai
   al primo colpo**: produce un'anteprima con quante righe sono nuove, quante aggiornano e
   quali sono scartate e perché, e solo dopo conferma tocca il database — un file sbagliato
@@ -182,11 +182,50 @@ admin sia dal menu utente sia dal layout della rotta.
   le colonne presenti nel file, così un CSV parziale non azzera i dati che non contiene.
   L'intestazione accetta sia `ragione_sociale` sia `insegna`; una colonna `provincia` viene
   ignorata e segnalata, perché nello schema non esiste e non serve.
-- *Ispezioni ed export*: da fare.
+- *Ispezioni ed export*: fatta. Tutte le ispezioni di tutti gli ispettori, filtrabili per
+  punto vendita, ispettore, stato e periodo, con ricerca locale su sigla, città e numero.
+  Apertura del PDF, riprova dell'invio e reinvio di una scheda già partita — che chiede
+  conferma, perché rispedisce davvero a tutti. Export CSV di quello che si vede.
+
+  È l'unica schermata che mostra le **bozze rimaste sul server**, e l'unica da cui si
+  eliminano: lo storico le esclude e l'elenco dell'ispettore viene da SQLite. Nascono da una
+  conclusione interrotta a metà — testata e righe salvate, firme no — ed è esattamente il
+  caso riprodotto in collaudo togliendo la rete un secondo dopo «Concludi». Eliminando la
+  bozza si tolgono anche le eventuali firme orfane su Storage.
 
 **Milestone 11 — build e OTA.** Non iniziata. `app.json` è già predisposto (package
 `it.carellidistribuzione.storescout`, icone, splash chiara e scura, `backgroundColor`), ma
 manca `eas.json` e la configurazione dell'account Expo.
+
+### Il formato dell'export
+
+**Punto e virgola, non virgola.** Excel in italiano apre un CSV separato da virgole tutto
+dentro la prima colonna, e chi lo riceve pensa che l'export sia rotto. Per lo stesso motivo
+il file comincia con il BOM: senza, gli accenti arrivano storpiati.
+
+**Una riga per attività rilevata**, con i dati dell'ispezione ripetuti accanto: è la forma
+che le tabelle pivot si aspettano. Un'ispezione senza rilievi produce comunque la sua riga,
+con le colonne dell'attività vuote, così dall'export non sparisce nessuna visita.
+
+L'export riguarda **quello che si vede**, filtri compresi, e si ferma alle 500 ispezioni più
+recenti come l'elenco. Quando le tocca, la schermata lo dice: un export che tronca in
+silenzio sarebbe peggio di uno che non c'è.
+
+### Eliminare le ispezioni: la policy che la specifica non elenca
+
+Il §4.2 elenca per `ispezioni` solo le policy di select, insert e update. Sul database vero
+**una policy di delete c'è** — verificato eliminando una bozza dal pannello — e non è
+documentata da nessuna parte. È servita a suo tempo per ripulire i dati di collaudo.
+
+L'app non ci si appoggia: `eliminaBozza` aggiunge `.eq('stato','bozza')` alla richiesta, così
+una scheda firmata non è cancellabile dall'app anche se il database lo permettesse. E ogni
+delete chiede indietro le righe toccate con `.select()`: senza policy PostgREST risponde
+«fatto» senza togliere niente, e un'eliminazione che non elimina deve dirlo invece di far
+sparire la voce fino al prossimo aggiornamento. Stesso inciampo già visto su
+`storage.objects`.
+
+Se un domani si vuole che nemmeno un admin possa cancellare un documento firmato, la policy
+va ristretta sul database: dal client non si può garantire.
 
 ### Altro da fornire
 

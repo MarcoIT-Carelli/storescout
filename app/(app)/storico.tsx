@@ -1,9 +1,7 @@
-import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
-  Platform,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -15,6 +13,7 @@ import {
 
 import { Badge, type Tono } from '@/components/Badge';
 import { BannerStato, INATTIVO, type StatoOperazione } from '@/components/BannerStato';
+import { CampoData } from '@/components/CampoData';
 import { Card } from '@/components/Card';
 import { Schermata } from '@/components/Schermata';
 import { Select } from '@/components/Select';
@@ -105,20 +104,6 @@ export default function Storico() {
     [liste.pdv],
   );
 
-  const scegliData = (quale: 'da' | 'a') => {
-    if (Platform.OS !== 'android') return;
-    const attuale = (quale === 'da' ? da : a) ?? new Date();
-    DateTimePickerAndroid.open({
-      value: attuale,
-      mode: 'date',
-      onChange: (evento, scelta) => {
-        if (evento.type !== 'set' || !scelta) return;
-        if (quale === 'da') setDa(scelta);
-        else setA(scelta);
-      },
-    });
-  };
-
   const azzera = () => {
     setPdvId(null);
     setDa(null);
@@ -154,8 +139,8 @@ export default function Storico() {
             onChange={setPdvId}
             segnaposto="Tutti"
           />
-          <CampoData etichetta="Dal" valore={da} onPress={() => scegliData('da')} onPulisci={() => setDa(null)} />
-          <CampoData etichetta="Al" valore={a} onPress={() => scegliData('a')} onPulisci={() => setA(null)} />
+          <CampoData etichetta="Dal" valore={da} onChange={setDa} />
+          <CampoData etichetta="Al" valore={a} onChange={setA} />
         </View>
 
         {filtriAttivi ? (
@@ -230,50 +215,6 @@ export default function Storico() {
   );
 }
 
-function CampoData({
-  etichetta,
-  valore,
-  onPress,
-  onPulisci,
-}: {
-  etichetta: string;
-  valore: Date | null;
-  onPress: () => void;
-  onPulisci: () => void;
-}) {
-  const c = useColori();
-  return (
-    <View style={{ flex: 1, gap: spazio.xs }}>
-      <Text style={[testo.etichetta, { color: c.testoSecondario }]}>{etichetta}</Text>
-      <View style={stili.campoData}>
-        <Pressable
-          onPress={onPress}
-          style={({ pressed }) => [
-            stili.dataPremibile,
-            { borderColor: c.bordo, backgroundColor: pressed ? c.superficieAlt : c.superficie },
-          ]}
-          accessibilityRole="button"
-        >
-          <Text style={[testo.corpo, { color: valore ? c.testo : c.testoDisabilitato }]}>
-            {valore ? dataBreve(valore) : 'Qualsiasi'}
-          </Text>
-        </Pressable>
-        {valore ? (
-          <Pressable
-            onPress={onPulisci}
-            hitSlop={8}
-            style={stili.pulisci}
-            accessibilityRole="button"
-            accessibilityLabel={`Rimuovi il filtro ${etichetta}`}
-          >
-            <Text style={{ color: c.testoSecondario, fontSize: 18 }}>✕</Text>
-          </Pressable>
-        ) : null}
-      </View>
-    </View>
-  );
-}
-
 const stili = StyleSheet.create({
   filtri: { padding: spazio.lg, gap: spazio.md, borderBottomWidth: 1 },
   ricerca: {
@@ -283,16 +224,6 @@ const stili = StyleSheet.create({
     paddingHorizontal: spazio.md,
   },
   riga: { flexDirection: 'row', gap: spazio.md, alignItems: 'flex-end' },
-  campoData: { flexDirection: 'row', alignItems: 'center', gap: spazio.xs },
-  dataPremibile: {
-    flex: 1,
-    minHeight: TOCCO_MIN,
-    borderWidth: 1,
-    borderRadius: raggio.md,
-    paddingHorizontal: spazio.md,
-    justifyContent: 'center',
-  },
-  pulisci: { width: TOCCO_MIN, height: TOCCO_MIN, alignItems: 'center', justifyContent: 'center' },
   azzera: { minHeight: TOCCO_MIN, justifyContent: 'center', alignSelf: 'flex-start' },
   elenco: { padding: spazio.lg, paddingBottom: spazio.xxxl },
   vocElenco: { flexDirection: 'row', alignItems: 'center', gap: spazio.md },

@@ -34,8 +34,9 @@ const SEZIONI: Sezione[] = [
   },
   {
     titolo: 'Ispezioni ed export',
-    descrizione: 'Elenco filtrabile di tutte le ispezioni, download del PDF, reinvio email ed export in CSV.',
-    bloccata: 'In lavorazione.',
+    descrizione:
+      'Tutte le ispezioni di tutti gli ispettori, bozze comprese. Apertura del PDF, reinvio email ed export in CSV di quanto filtrato.',
+    percorso: '/ispezioni',
   },
 ];
 
