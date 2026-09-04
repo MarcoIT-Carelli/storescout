@@ -16,7 +16,10 @@
         "monochromeImage": "./assets/adaptive-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "backgroundColor": "#FFFFFF"
+      "backgroundColor": "#FFFFFF",
+      "runtimeVersion": {
+        "policy": "appVersion"
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -39,6 +42,17 @@
       "expo-sqlite",
       "expo-sharing"
     ],
-    "backgroundColor": "#FFFFFF"
+    "backgroundColor": "#FFFFFF",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ec71b8a6-43b5-45f0-af9a-80bc2c035ff1"
+      }
+    },
+    "owner": "carelli-distribuzione",
+    "updates": {
+      "url": "https://u.expo.dev/ec71b8a6-43b5-45f0-af9a-80bc2c035ff1"
+    },
+    "ios": {}
   }
 }

@@ -13,18 +13,19 @@
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/datetimepicker": "9.1.0",
     "@supabase/supabase-js": "^2.113.0",
-    "expo": "~57.0.19",
+    "expo": "~57.0.20",
     "expo-constants": "~57.0.17",
     "expo-crypto": "~57.0.2",
     "expo-file-system": "~57.0.6",
     "expo-linking": "~57.0.9",
     "expo-print": "~57.0.1",
-    "expo-router": "~57.0.18",
-    "expo-sharing": "~57.0.17",
+    "expo-router": "~57.0.19",
+    "expo-sharing": "~57.0.18",
     "expo-splash-screen": "~57.0.8",
     "expo-sqlite": "~57.0.2",
     "expo-status-bar": "~57.0.1",
     "expo-system-ui": "~57.0.3",
+    "expo-updates": "~57.0.21",
     "react": "19.2.3",
     "react-native": "0.86.3",
     "react-native-safe-area-context": "~5.7.0",
@@ -45,5 +46,8 @@
         "react-native-reanimated"
       ]
     }
+  },
+  "overrides": {
+    "react-dom": "19.2.3"
   }
 }

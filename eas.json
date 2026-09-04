@@ -1,0 +1,17 @@
+{
+  "cli": {
+    "version": ">= 23.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "production": {
+      "environment": "production",
+      "distribution": "internal",
+      "autoIncrement": true,
+      "android": {
+        "buildType": "apk"
+      },
+      "channel": "production"
+    }
+  }
+}
