@@ -181,6 +181,33 @@ Il file va rigenerato, non modificato a mano. Serve un data URI perché expo-pri
 l'HTML sul dispositivo, spesso senza rete: un riferimento a file o a URL non verrebbe
 risolto. Il marchio StoreScout resta l'identità dell'app, non del documento.
 
+### Le tre strade per la password
+
+1. **Cambio volontario** — menu utente, *Cambia password*: attuale, nuova, ripeti.
+   La password attuale viene verificata rientrando con le vecchie credenziali, perché
+   Supabase non la richiede per sostituirla e la sessione da sola non basta su un tablet
+   che gira per il negozio.
+2. **Password dimenticata** — l'admin la reimposta dal pannello, la comunica a voce, e
+   l'app obbliga a cambiarla al primo accesso. Nessuna casella di posta coinvolta: è la
+   strada pensata per gli ispettori, che sul tablet la posta non ce l'hanno.
+3. **Reset via email** — link con deep link `storescout://reimposta-password`. Funziona
+   solo per chi può aprire la propria posta sul dispositivo, in pratica gli amministratori.
+
+Le password non stanno in `profili`: vivono in `auth.users` come hash bcrypt e non sono
+leggibili da nessuno, nemmeno con la chiave `service_role`. L'unica password che un
+amministratore vede è quella che ha appena generato lui per un nuovo ispettore.
+
+### Moduli nativi esclusi dall'autolinking
+
+`react-native-gesture-handler` e `react-native-reanimated` sono esclusi in `package.json`
+sotto `expo.autolinking.exclude`. Arrivano come dipendenze transitive di `expo-router`,
+non vengono usati — l'app monta solo `Stack`, niente Drawer né Tabs — e il percorso dei
+loro file oggetto supera i 260 caratteri ammessi da Windows, il che blocca la build locale.
+Non è un capriccio: abilitare i percorsi lunghi nel registro non risolve, perché il `ninja`
+incluso in CMake dell'SDK Android non dichiara la compatibilità nel proprio manifest
+(verificato sui binari di 3.22.1 e 3.31.0). Su EAS Build, che compila su Linux, il problema
+non esiste: se un giorno servissero davvero, l'esclusione va tolta solo lì.
+
 ### Policy mancanti su Storage
 
 Il passo 6 della guida crea su `storage.objects` solo le policy di lettura e inserimento.
