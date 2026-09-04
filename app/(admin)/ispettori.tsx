@@ -142,7 +142,7 @@ export default function Ispettori() {
   };
 
   return (
-    <Schermata titolo="Ispettori" sottotitolo="Chi può accedere all’app" indietro>
+    <Schermata titolo="Ispettori" sottotitolo="Chi può accedere all’app" indietro tinta="giallo">
       <ScrollView contentContainerStyle={stili.corpo} keyboardShouldPersistTaps="handled">
         <BannerStato stato={stato} onRiprova={carica} onChiudi={() => setStato(INATTIVO)} />
 
@@ -259,9 +259,14 @@ export default function Ispettori() {
                         <Text style={[testo.piccolo, { color: c.testoSecondario }]}>{p.email}</Text>
                       </View>
 
-                      {p.ruolo === 'admin' ? <Badge testo="Amministratore" tono="attenzione" /> : null}
-                      {p.deve_cambiare_password ? <Badge testo="Password da cambiare" /> : null}
-                      {!p.attivo ? <Badge testo="Disattivato" tono="errore" /> : null}
+                      {/* Le pillole hanno `alignSelf: flex-start` e da sole si incollerebbero
+                          in cima alla riga: questo contenitore le riporta sulla linea dei
+                          pulsanti. */}
+                      <View style={stili.pillole}>
+                        {p.ruolo === 'admin' ? <Badge testo="Amministratore" tono="attenzione" /> : null}
+                        {p.deve_cambiare_password ? <Badge testo="Password da cambiare" /> : null}
+                        {!p.attivo ? <Badge testo="Disattivato" tono="errore" /> : null}
+                      </View>
 
                       <Pressable
                         onPress={() => {
@@ -404,6 +409,7 @@ const stili = StyleSheet.create({
   credenziali: { borderWidth: 1, borderRadius: raggio.md, padding: spazio.lg },
   riga: { flexDirection: 'row', alignItems: 'center', gap: spazio.md, flexWrap: 'wrap' },
   dati: { flex: 1, gap: 2, minWidth: 180 },
+  pillole: { flexDirection: 'row', alignItems: 'center', gap: spazio.sm },
   duecolonne: { flexDirection: 'row', gap: spazio.md, flexWrap: 'wrap' },
   azione: { minHeight: TOCCO_MIN, justifyContent: 'center', paddingHorizontal: spazio.sm },
   azioni: { flexDirection: 'row', gap: spazio.sm, justifyContent: 'flex-end', flexWrap: 'wrap' },

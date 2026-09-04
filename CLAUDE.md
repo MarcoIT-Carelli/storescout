@@ -80,8 +80,18 @@ errore          #C0392B
 Definisci questi valori una volta in `src/theme/` e riferisciti sempre a quelli.
 
 **Il giallo non è mai colore di testo su fondo chiaro.** Solo riempimento con testo nero sopra,
-o marchio su fondo nero. Va dosato: pulsante primario, indicatore di ispezione in corso,
-marchio. Nient'altro.
+o marchio su fondo nero. Gli usi ammessi sono cinque, e non se ne aggiungono altri senza
+motivo: pulsante primario, indicatore di ispezione in corso, marchio, **testata delle
+schermate di amministrazione** e **sigla del punto vendita nella sua anagrafica**.
+
+Gli ultimi due servono a separare a colpo d'occhio la configurazione dal lavoro sul campo:
+l'ispettore in negozio non deve confondere una schermata di impostazioni con la scheda che
+sta compilando. La testata gialla si chiede con `tinta="giallo"` su `Schermata`, che porta
+titolo, sottotitolo e freccia a nero da soli.
+
+`Badge` ha `alignSelf: 'flex-start'`, che serve quando sta in colonna ma dentro una riga
+vince sull'`alignItems: 'center'` e lo incolla in alto. In una riga con dei pulsanti accanto
+va avvolto in un contenitore (`stili.pillole`), altrimenti resta disallineato.
 
 Aree toccabili di almeno 48dp. Corpo del testo da 15px in su, etichette da 13px in su.
 Layout funzionante sia in orizzontale sia in verticale. Nessun effetto legato al passaggio del
@@ -182,7 +192,9 @@ admin sia dal menu utente sia dal layout della rotta.
   le colonne presenti nel file, così un CSV parziale non azzera i dati che non contiene.
   L'intestazione accetta sia `ragione_sociale` sia `insegna`; una colonna `provincia` viene
   ignorata e segnalata, perché nello schema non esiste e non serve.
-- *Ispezioni ed export*: fatta. Tutte le ispezioni di tutti gli ispettori, filtrabili per
+- *Ispezioni ed export*: fatta. Per un admin questa sostituisce lo storico anche nel menu
+  utente: erano due schermate che facevano la stessa cosa. Lo storico in sola lettura resta
+  agli ispettori. Tutte le ispezioni di tutti gli ispettori, filtrabili per
   punto vendita, ispettore, stato e periodo, con ricerca locale su sigla, città e numero.
   Apertura del PDF, riprova dell'invio e reinvio di una scheda già partita — che chiede
   conferma, perché rispedisce davvero a tutti. Export CSV di quello che si vede.

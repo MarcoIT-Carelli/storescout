@@ -47,7 +47,7 @@ export default function Amministrazione() {
   const dueColonne = width >= SOGLIA_LARGA;
 
   return (
-    <Schermata titolo="Amministrazione" sottotitolo="Configurazione dell’app" indietro>
+    <Schermata titolo="Amministrazione" sottotitolo="Configurazione dell’app" indietro tinta="giallo">
       <ScrollView contentContainerStyle={stili.corpo}>
         <View style={[stili.griglia, !dueColonne && { flexDirection: 'column' }]}>
           {SEZIONI.map((s) => {

@@ -82,22 +82,35 @@ export function MenuUtente() {
 
             <View style={[stili.separatore, { backgroundColor: c.bordo }]} />
 
-            <Voce
-              etichetta="Storico ispezioni"
-              onPress={() => {
-                setAperto(false);
-                router.push('/storico');
-              }}
-            />
+            {/* Per un admin lo storico e l'elenco del pannello mostrerebbero la stessa cosa:
+                l'admin ha una voce sola, quella che può anche filtrare, esportare e
+                intervenire. Lo storico in sola lettura resta agli ispettori. */}
             {profilo?.ruolo === 'admin' ? (
+              <>
+                <Voce
+                  etichetta="Ispezioni ed export"
+                  onPress={() => {
+                    setAperto(false);
+                    router.push('/ispezioni');
+                  }}
+                />
+                <Voce
+                  etichetta="Amministrazione"
+                  onPress={() => {
+                    setAperto(false);
+                    router.push('/amministrazione');
+                  }}
+                />
+              </>
+            ) : (
               <Voce
-                etichetta="Amministrazione"
+                etichetta="Storico ispezioni"
                 onPress={() => {
                   setAperto(false);
-                  router.push('/amministrazione');
+                  router.push('/storico');
                 }}
               />
-            ) : null}
+            )}
             <Voce
               etichetta="Cambia password"
               onPress={() => {

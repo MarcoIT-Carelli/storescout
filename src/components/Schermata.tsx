@@ -12,19 +12,43 @@ type Props = {
   indietro?: boolean;
   onIndietro?: () => void;
   azioni?: ReactNode;
+  /**
+   * Testata gialla, riempimento con testo nero sopra: distingue a colpo d'occhio le
+   * schermate di configurazione da quelle su cui si lavora dentro il punto vendita.
+   */
+  tinta?: 'giallo';
   children: ReactNode;
 };
 
-export function Schermata({ titolo, sottotitolo, indietro, onIndietro, azioni, children }: Props) {
+export function Schermata({
+  titolo,
+  sottotitolo,
+  indietro,
+  onIndietro,
+  azioni,
+  tinta,
+  children,
+}: Props) {
   const c = useColori();
   const router = useRouter();
 
   const conTestata = Boolean(titolo || indietro || azioni);
 
+  const gialla = tinta === 'giallo';
+  const inchiostro = gialla ? c.suGiallo : c.testo;
+
   return (
     <SafeAreaView style={[stili.pagina, { backgroundColor: c.sfondo }]} edges={['top', 'left', 'right']}>
       {conTestata ? (
-        <View style={[stili.testata, { borderBottomColor: c.bordo, backgroundColor: c.superficie }]}>
+        <View
+          style={[
+            stili.testata,
+            {
+              borderBottomColor: gialla ? c.gialloPremuto : c.bordo,
+              backgroundColor: gialla ? c.giallo : c.superficie,
+            },
+          ]}
+        >
           {indietro ? (
             <Pressable
               // Una schermata aperta da deep link non ha cronologia alle spalle:
@@ -39,18 +63,26 @@ export function Schermata({ titolo, sottotitolo, indietro, onIndietro, azioni, c
               accessibilityLabel="Torna indietro"
               hitSlop={8}
             >
-              <Text style={[stili.freccia, { color: c.testo }]}>‹</Text>
+              <Text style={[stili.freccia, { color: inchiostro }]}>‹</Text>
             </Pressable>
           ) : null}
 
           <View style={stili.titoli}>
             {titolo ? (
-              <Text style={[testo.sezione, { color: c.testo }]} numberOfLines={1}>
+              <Text style={[testo.sezione, { color: inchiostro }]} numberOfLines={1}>
                 {titolo}
               </Text>
             ) : null}
             {sottotitolo ? (
-              <Text style={[testo.piccolo, { color: c.testoSecondario }]} numberOfLines={1}>
+              <Text
+                style={[
+                  testo.piccolo,
+                  gialla
+                    ? { color: c.suGiallo, opacity: 0.75 }
+                    : { color: c.testoSecondario },
+                ]}
+                numberOfLines={1}
+              >
                 {sottotitolo}
               </Text>
             ) : null}

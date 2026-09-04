@@ -124,7 +124,7 @@ export default function ListeValori() {
   const senzaEmail = conEmail && voci.filter((v) => v.attivo && !v.email).length;
 
   return (
-    <Schermata titolo="Liste valori" sottotitolo="Modificabili senza rilasciare una nuova app" indietro>
+    <Schermata titolo="Liste valori" sottotitolo="Modificabili senza rilasciare una nuova app" indietro tinta="giallo">
       <View style={[stili.schede, { backgroundColor: c.superficie, borderBottomColor: c.bordo }]}>
         {TABELLE.map((t) => {
           const attiva = t === tabella;

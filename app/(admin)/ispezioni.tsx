@@ -206,6 +206,7 @@ export default function IspezioniAdmin() {
       titolo="Ispezioni ed export"
       sottotitolo="Tutte le ispezioni, bozze comprese"
       indietro
+      tinta="giallo"
       azioni={
         <Button
           titolo="Esporta CSV"

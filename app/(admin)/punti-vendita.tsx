@@ -198,6 +198,7 @@ export default function PuntiVendita() {
       titolo="Punti vendita"
       sottotitolo={`${pdv.filter((p) => p.attivo).length} attivi su ${pdv.length}`}
       indietro
+      tinta="giallo"
     >
       <View style={[stili.testata, { backgroundColor: c.superficie, borderBottomColor: c.bordo }]}>
         <TextInput
@@ -290,8 +291,8 @@ export default function PuntiVendita() {
                 ) : (
                   <>
                     <View style={stili.riga}>
-                      <View style={[stili.sigla, { backgroundColor: c.superficieAlt, borderColor: c.bordo }]}>
-                        <Text style={[testo.sigla, { color: c.testo }]}>{p.codice}</Text>
+                      <View style={[stili.sigla, { backgroundColor: c.giallo }]}>
+                        <Text style={[testo.sigla, { color: c.suGiallo }]}>{p.codice}</Text>
                       </View>
 
                       <View style={stili.dati}>
@@ -304,8 +305,13 @@ export default function PuntiVendita() {
                         </Text>
                       </View>
 
-                      <Badge testo={p.ragione_sociale} />
-                      {!p.attivo ? <Badge testo="Disattivato" tono="errore" /> : null}
+                      {/* Le pillole hanno `alignSelf: flex-start` e da sole si incollerebbero
+                          in cima alla riga: questo contenitore le riporta sulla linea dei
+                          pulsanti. */}
+                      <View style={stili.pillole}>
+                        <Badge testo={p.ragione_sociale} />
+                        {!p.attivo ? <Badge testo="Disattivato" tono="errore" /> : null}
+                      </View>
 
                       <Pressable
                         onPress={() => {
@@ -473,11 +479,11 @@ const stili = StyleSheet.create({
     width: 54,
     height: 54,
     borderRadius: raggio.md,
-    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   dati: { flex: 1, gap: 2, minWidth: 200 },
+  pillole: { flexDirection: 'row', alignItems: 'center', gap: spazio.sm },
   azione: { minHeight: TOCCO_MIN, justifyContent: 'center', paddingHorizontal: spazio.sm },
   azioni: { flexDirection: 'row', gap: spazio.sm, justifyContent: 'flex-end', flexWrap: 'wrap' },
   colonne: { flexDirection: 'row', gap: spazio.md, flexWrap: 'wrap' },
