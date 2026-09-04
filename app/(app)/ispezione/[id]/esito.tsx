@@ -18,7 +18,7 @@ import { Schermata } from '@/components/Schermata';
 import { useListe } from '@/hooks/useListe';
 import { messaggioErrore } from '@/lib/errori';
 import { dataBreve, daDataISO, durata, ora } from '@/lib/format';
-import { caricaDettaglio, urlPdf, type Dettaglio } from '@/lib/ispezioni';
+import { caricaDettaglio, inviaScheda, urlPdf, type Dettaglio } from '@/lib/ispezioni';
 import type { StatoIspezione } from '@/types/database';
 import { raggio, SOGLIA_LARGA, spazio, testo, useColori } from '@/theme';
 
@@ -31,8 +31,7 @@ const ASPETTO: Record<StatoIspezione, { etichetta: string; tono: Tono; spiegazio
   conclusa: {
     etichetta: 'Da inviare',
     tono: 'attenzione',
-    spiegazione:
-      'Scheda salvata e archiviata in PDF. L’invio automatico via email si attiverà quando saranno disponibili le credenziali SMTP e gli indirizzi dei destinatari.',
+    spiegazione: 'Scheda salvata e archiviata in PDF, ma non ancora spedita. Puoi inviarla adesso.',
   },
   inviata: {
     etichetta: 'Inviata',
@@ -42,7 +41,8 @@ const ASPETTO: Record<StatoIspezione, { etichetta: string; tono: Tono; spiegazio
   errore_invio: {
     etichetta: 'Invio non riuscito',
     tono: 'errore',
-    spiegazione: 'La scheda è salvata: l’invio può essere ripetuto senza ricompilare nulla.',
+    spiegazione:
+      'La scheda è salvata e il PDF archiviato: l’invio può essere ripetuto senza ricompilare nulla.',
   },
 };
 
@@ -63,22 +63,36 @@ export default function Esito() {
   const [caricamento, setCaricamento] = useState(true);
   const [stato, setStato] = useState<StatoOperazione>(INATTIVO);
 
-  const carica = useCallback(async () => {
+  const carica = useCallback(async (silenzioso = false) => {
     if (!id) return;
-    setCaricamento(true);
+    if (!silenzioso) setCaricamento(true);
     try {
       setDettaglio(await caricaDettaglio(id));
-      setStato(INATTIVO);
+      if (!silenzioso) setStato(INATTIVO);
     } catch (e) {
       setStato({ tipo: 'fallito', messaggio: messaggioErrore(e) });
     } finally {
-      setCaricamento(false);
+      if (!silenzioso) setCaricamento(false);
     }
   }, [id]);
 
   useEffect(() => {
     void carica();
   }, [carica]);
+
+  const riprova = async () => {
+    if (!id) return;
+    setStato({ tipo: 'inCorso', messaggio: 'Invio della scheda…' });
+    const esito = await inviaScheda(id);
+    // Prima si rinfrescano i dati, poi si mostra l'esito: nell'ordine inverso il
+    // ricaricamento cancellerebbe il messaggio appena scritto.
+    await carica(true);
+    setStato(
+      esito.inviata
+        ? { tipo: 'riuscito', messaggio: esito.messaggio }
+        : { tipo: 'fallito', messaggio: esito.messaggio },
+    );
+  };
 
   const apriPdf = async () => {
     const percorso = dettaglio?.ispezione.pdf_path;
@@ -209,6 +223,15 @@ export default function Esito() {
         ) : null}
 
         <BannerStato stato={stato} onChiudi={() => setStato(INATTIVO)} />
+
+        {i.pdf_path && (i.stato === 'conclusa' || i.stato === 'errore_invio') ? (
+          <Button
+            titolo={i.stato === 'errore_invio' ? 'Riprova invio' : 'Invia la scheda'}
+            larghezzaPiena
+            onPress={riprova}
+            inCorso={stato.tipo === 'inCorso'}
+          />
+        ) : null}
 
         {i.pdf_path ? (
           <Button titolo="Apri il PDF della scheda" variante="secondario" larghezzaPiena onPress={apriPdf} />

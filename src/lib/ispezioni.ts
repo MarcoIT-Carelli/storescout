@@ -6,6 +6,7 @@ import type { Bozza } from '@/types/bozza';
 import { rigaCompilata } from '@/types/bozza';
 import type { Ispezione, Pdv, Profilo, VoceLista } from '@/types/database';
 
+import { messaggioDaFunzione } from './errori';
 import { dataBreve, daDataISO } from './format';
 import { supabase } from './supabase';
 
@@ -15,12 +16,9 @@ import { supabase } from './supabase';
  * e la bozza locale non viene mai eliminata prima della conferma di salvataggio remoto.
  */
 
-export type Fase =
-  | 'salvataggio'
-  | 'righe'
-  | 'firme'
-  | 'pdf'
-  | 'completato';
+export type Fase = 'salvataggio' | 'righe' | 'firme' | 'pdf' | 'invio' | 'completato';
+
+export type EsitoInvio = { inviata: boolean; messaggio: string };
 
 export type Avanzamento = { fase: Fase; messaggio: string };
 
@@ -145,7 +143,7 @@ export async function concludiIspezione(
   ispettore: Profilo,
   rif: Riferimenti,
   onAvanzamento: (a: Avanzamento) => void,
-): Promise<{ ispezione: Ispezione; pdfUri: string }> {
+): Promise<{ ispezione: Ispezione; pdfUri: string; invio: EsitoInvio }> {
   onAvanzamento({ fase: 'salvataggio', messaggio: 'Salvataggio della scheda…' });
   const testata = await salvaTestata(bozza);
 
@@ -229,8 +227,40 @@ export async function concludiIspezione(
 
   if (error) throw error;
 
-  onAvanzamento({ fase: 'completato', messaggio: 'Scheda salvata.' });
-  return { ispezione: conclusa as Ispezione, pdfUri };
+  onAvanzamento({ fase: 'invio', messaggio: 'Invio della scheda…' });
+  const invio = await inviaScheda(bozza.id);
+
+  onAvanzamento({
+    fase: 'completato',
+    messaggio: invio.inviata ? invio.messaggio : 'Scheda salvata, ma non spedita.',
+  });
+  return { ispezione: conclusa as Ispezione, pdfUri, invio };
+}
+
+/**
+ * Spedisce la scheda ai destinatari previsti.
+ *
+ * Non solleva mai: un invio fallito non è un errore dell'app ma uno stato dell'ispezione,
+ * che resta salvata e riprovabile. La Edge Function ha già registrato il tentativo e
+ * portato la scheda in `errore_invio`.
+ */
+export async function inviaScheda(ispezioneId: string): Promise<EsitoInvio> {
+  const { data, error } = await supabase.functions.invoke('invia-scheda', {
+    body: { ispezione_id: ispezioneId },
+  });
+
+  if (error) return { inviata: false, messaggio: await messaggioDaFunzione(error) };
+
+  const esito = data as { esito?: string; errore?: string; a?: string[]; cc?: string[] };
+  if (esito?.esito !== 'inviata') {
+    return { inviata: false, messaggio: esito?.errore ?? 'Invio non riuscito.' };
+  }
+
+  const quanti = (esito.a?.length ?? 0) + (esito.cc?.length ?? 0);
+  return {
+    inviata: true,
+    messaggio: quanti === 1 ? 'Scheda inviata a 1 destinatario.' : `Scheda inviata a ${quanti} destinatari.`,
+  };
 }
 
 /** Link temporaneo per riaprire il PDF di un'ispezione già archiviata. */

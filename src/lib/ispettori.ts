@@ -2,6 +2,7 @@ import * as Crypto from 'expo-crypto';
 
 import type { Profilo, RuoloUtente } from '@/types/database';
 
+import { messaggioDaFunzione } from './errori';
 import { supabase } from './supabase';
 
 /**
@@ -13,20 +14,6 @@ import { supabase } from './supabase';
  */
 
 const FUNZIONE = 'gestisci-ispettori';
-
-/** Estrae il messaggio scritto dalla funzione, che `invoke` nasconde dentro il contesto. */
-async function messaggioDaErrore(errore: unknown): Promise<string> {
-  const contesto = (errore as { context?: Response })?.context;
-  if (contesto && typeof contesto.json === 'function') {
-    try {
-      const corpo = (await contesto.json()) as { errore?: string };
-      if (corpo?.errore) return corpo.errore;
-    } catch {
-      // corpo non leggibile: si ricade sul messaggio generico
-    }
-  }
-  return errore instanceof Error ? errore.message : 'Operazione non riuscita.';
-}
 
 export async function leggiIspettori(): Promise<Profilo[]> {
   const { data, error } = await supabase
@@ -49,7 +36,7 @@ export async function creaIspettore(dati: {
   const { data, error } = await supabase.functions.invoke(FUNZIONE, {
     body: { azione: 'crea', ...dati },
   });
-  if (error) throw new Error(await messaggioDaErrore(error));
+  if (error) throw new Error(await messaggioDaFunzione(error));
   return (data as { profilo: Profilo }).profilo;
 }
 
@@ -57,7 +44,7 @@ export async function reimpostaPassword(id: string, password: string): Promise<v
   const { error } = await supabase.functions.invoke(FUNZIONE, {
     body: { azione: 'reimposta_password', id, password },
   });
-  if (error) throw new Error(await messaggioDaErrore(error));
+  if (error) throw new Error(await messaggioDaFunzione(error));
 }
 
 /** Rinomina, cambio ruolo e attivazione: nessuna chiave privilegiata, basta la policy. */

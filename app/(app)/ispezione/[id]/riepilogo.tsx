@@ -51,6 +51,8 @@ export default function Riepilogo() {
       .map((d) => ({ nome: d.nome, email: d.email }));
   }, [bozza, liste.destinatari]);
 
+  const senzaIndirizzo = destinatariEmail.filter((d) => !d.email).length;
+
   if (caricamento || !bozza) {
     return (
       <Schermata titolo="Riepilogo" indietro>
@@ -188,13 +190,20 @@ export default function Riepilogo() {
             />
           ))}
 
-          <View style={[stili.nota, { backgroundColor: c.attenzioneSfondo, borderColor: c.attenzione }]}>
-            <Text style={[testo.piccolo, { color: c.testo }]}>
-              L’invio automatico via email non è ancora attivo: mancano le credenziali SMTP Aruba e
-              gli indirizzi dei destinatari attività. La scheda viene salvata e archiviata in PDF, e
-              resterà in elenco come "da inviare" finché la configurazione non sarà completata.
+          {senzaIndirizzo > 0 ? (
+            <View style={[stili.nota, { backgroundColor: c.attenzioneSfondo, borderColor: c.attenzione }]}>
+              <Text style={[testo.piccolo, { color: c.testo }]}>
+                {senzaIndirizzo === 1
+                  ? 'Un destinatario non ha un indirizzo impostato e non riceverà la scheda. Puoi aggiungerlo dal pannello di amministrazione.'
+                  : `${senzaIndirizzo} destinatari non hanno un indirizzo impostato e non riceveranno la scheda. Puoi aggiungerli dal pannello di amministrazione.`}
+              </Text>
+            </View>
+          ) : (
+            <Text style={[testo.piccolo, { color: c.testoSecondario, marginTop: spazio.md }]}>
+              Alla conferma la scheda viene spedita automaticamente, con il PDF in allegato.
+              Se l’invio non riesce resta in elenco e si può ripetere: nulla va perso.
             </Text>
-          </View>
+          )}
         </Card>
 
         {problemi.length > 0 ? (

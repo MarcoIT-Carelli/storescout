@@ -28,3 +28,32 @@ export function messaggioErrore(e: unknown): string {
 
   return testo || 'Si è verificato un errore imprevisto.';
 }
+
+/**
+ * Le Edge Function restituiscono il messaggio nel corpo della risposta, che
+ * `functions.invoke` nasconde dentro il contesto dell'errore. Senza questo, all'utente
+ * arriverebbe un generico "Edge Function returned a non-2xx status code".
+ */
+export async function messaggioDaFunzione(errore: unknown): Promise<string> {
+  const contesto = (errore as { context?: Response })?.context;
+  if (contesto && typeof contesto.text === 'function') {
+    // Il client Supabase puo' aver gia' letto il corpo: si clona prima di riprovare,
+    // e si legge come testo perche' non tutte le risposte d'errore sono JSON.
+    for (const sorgente of [() => contesto.clone(), () => contesto]) {
+      try {
+        const grezzo = await sorgente().text();
+        if (!grezzo) continue;
+        try {
+          const corpo = JSON.parse(grezzo) as { errore?: string; message?: string };
+          if (corpo?.errore) return corpo.errore;
+          if (corpo?.message) return corpo.message;
+        } catch {
+          return grezzo.slice(0, 200);
+        }
+      } catch {
+        // sorgente non leggibile: si prova la successiva
+      }
+    }
+  }
+  return messaggioErrore(errore);
+}
