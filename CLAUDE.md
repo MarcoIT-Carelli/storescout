@@ -138,11 +138,24 @@ di A4.
 generati in A4 e verificati nel contenuto. Sono dati veri sul progetto Supabase: vanno
 eliminati quando non servono più.
 
-**Milestone 8 — invio email.** Bloccata. Servono le credenziali SMTP Aruba e le email dei sette
-destinatari attività. Le stesse credenziali servono anche in *Authentication → Emails → SMTP
-Settings*: il mittente integrato di Supabase non recapita e ha già impedito la conferma
-dell'utente di prova. Finché non arrivano, un'ispezione conclusa resta in stato `conclusa` e
-compare in elenco come "da inviare".
+**Milestone 8 — invio email.** Completata. `supabase/functions/invia-scheda` compone i
+destinatari secondo §8.1, scarica il PDF da Storage, spedisce via SMTP Aruba e registra
+l'esito in `invii_email` portando l'ispezione a `inviata` o `errore_invio`. L'app la chiama
+al termine della conclusione e dal pulsante "Riprova invio".
+
+Tre trappole emerse collaudando, da non reintrodurre:
+
+- **Un invio fallito risponde `200`**, non `502`. È un esito previsto, non un errore di
+  trasporto: con un codice non-2xx il client Supabase avvolge la risposta in un errore
+  generico e il messaggio vero non arriva mai a schermo. Restano non-2xx solo gli errori
+  di autorizzazione.
+- **Il corpo della risposta d'errore va clonato prima di leggerlo**: il client può averlo
+  già consumato, e `context.json()` fallisce in silenzio.
+- **Il PDF si codifica con `encodeBase64` di `@std/encoding`**, mai concatenando carattere
+  per carattere: su un allegato da un centinaio di KB la Edge Function esaurisce le risorse.
+
+Restano da inserire cinque dei sette indirizzi dei destinatari, dal pannello admin. Quelli
+senza indirizzo non ricevono, e il riepilogo lo segnala prima di concludere.
 
 **Milestone 9 — storico.** Completata. Elenco con ricerca testuale, filtro per punto vendita e
 per intervallo di date; punto vendita e periodo filtrano sul server, la ricerca resta locale.
