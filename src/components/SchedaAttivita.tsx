@@ -90,6 +90,7 @@ export function SchedaAttivita({
 
       <View style={[stili.tendine, stretto && stili.tendineImpilate]}>
         <Select
+          contenitore={{ flex: 1, minWidth: 200 }}
           etichetta="Destinatario"
           opzioni={destinatari}
           valore={riga.destinatario_id}
@@ -97,6 +98,7 @@ export function SchedaAttivita({
           disabilitato={disabilitato}
         />
         <Select
+          contenitore={{ flex: 1, minWidth: 200 }}
           etichetta="Reparto"
           opzioni={reparti}
           valore={riga.reparto_id}
@@ -104,6 +106,7 @@ export function SchedaAttivita({
           disabilitato={disabilitato}
         />
         <Select
+          contenitore={{ flex: 1, minWidth: 200 }}
           etichetta="Tipo di intervento"
           opzioni={tipiIntervento}
           valore={riga.tipo_intervento_id}

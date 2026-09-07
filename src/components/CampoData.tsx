@@ -29,7 +29,7 @@ export function CampoData({ etichetta, valore, onChange, contenitore }: Props) {
   };
 
   return (
-    <View style={[{ gap: spazio.xs }, contenitore ?? { flex: 1 }]}>
+    <View style={[{ gap: spazio.xs }, contenitore]}>
       <Text style={[testo.etichetta, { color: c.testoSecondario }]}>{etichetta}</Text>
       <View style={stili.campo}>
         <Pressable

@@ -86,26 +86,18 @@ export function MenuUtente({ onCercaAggiornamenti }: { onCercaAggiornamenti?: ()
 
             <View style={[stili.separatore, { backgroundColor: c.bordo }]} />
 
-            {/* Per un admin lo storico e l'elenco del pannello mostrerebbero la stessa cosa:
-                l'admin ha una voce sola, quella che può anche filtrare, esportare e
-                intervenire. Lo storico in sola lettura resta agli ispettori. */}
+            {/* All'admin le ispezioni arrivano da Amministrazione, insieme alle altre
+                funzioni del pannello: metterle anche qui sarebbe la stessa porta due
+                volte. Lo storico in sola lettura resta agli ispettori, che il pannello
+                non ce l'hanno. */}
             {profilo?.ruolo === 'admin' ? (
-              <>
-                <Voce
-                  etichetta="Ispezioni ed export"
-                  onPress={() => {
-                    setAperto(false);
-                    router.push('/ispezioni');
-                  }}
-                />
-                <Voce
-                  etichetta="Amministrazione"
-                  onPress={() => {
-                    setAperto(false);
-                    router.push('/amministrazione');
-                  }}
-                />
-              </>
+              <Voce
+                etichetta="Amministrazione"
+                onPress={() => {
+                  setAperto(false);
+                  router.push('/amministrazione');
+                }}
+              />
             ) : (
               <Voce
                 etichetta="Storico ispezioni"

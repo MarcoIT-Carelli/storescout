@@ -54,7 +54,7 @@ export function Select({
   };
 
   return (
-    <View style={[{ gap: spazio.xs }, contenitore ?? { flex: 1 }]}>
+    <View style={[{ gap: spazio.xs }, contenitore]}>
       <Text style={[testo.etichetta, { color: c.testoSecondario }]}>{etichetta}</Text>
 
       <Pressable

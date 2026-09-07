@@ -46,6 +46,10 @@ const ASPETTO: Record<StatoIspezione, { etichetta: string; tono: Tono }> = {
   errore_invio: { etichetta: 'Invio non riuscito', tono: 'errore' },
 };
 
+/** In riga i campi si dividono la larghezza; in colonna si tengono la propria
+ *  altezza, e il flex li farebbe collassare uno sopra l'altro. */
+const LARGO = { flex: 1 } as const;
+
 const STATI = (Object.keys(ASPETTO) as StatoIspezione[]).map((s) => ({
   id: s,
   nome: ASPETTO[s].etichetta,
@@ -234,7 +238,7 @@ export default function IspezioniAdmin() {
 
         <View style={[stili.riga, stretto && stili.colonna]}>
           <Select
-            contenitore={stretto ? undefined : { flex: 1 }}
+            contenitore={stretto ? undefined : LARGO}
             etichetta="Punto vendita"
             opzioni={opzioniPdv}
             valore={filtri.pdvId}
@@ -242,7 +246,7 @@ export default function IspezioniAdmin() {
             segnaposto="Tutti"
           />
           <Select
-            contenitore={stretto ? undefined : { flex: 1 }}
+            contenitore={stretto ? undefined : LARGO}
             etichetta="Ispettore"
             opzioni={opzioniIspettori}
             valore={filtri.ispettoreId}
@@ -253,15 +257,15 @@ export default function IspezioniAdmin() {
 
         <View style={[stili.riga, stretto && stili.colonna]}>
           <Select
-            contenitore={stretto ? undefined : { flex: 1 }}
+            contenitore={stretto ? undefined : LARGO}
             etichetta="Stato"
             opzioni={STATI}
             valore={filtri.stato}
             onChange={(v) => cambia('stato', v as StatoIspezione | null)}
             segnaposto="Qualsiasi"
           />
-          <CampoData contenitore={stretto ? undefined : { flex: 1 }} etichetta="Dal" valore={filtri.da} onChange={(d) => cambia('da', d)} />
-          <CampoData contenitore={stretto ? undefined : { flex: 1 }} etichetta="Al" valore={filtri.a} onChange={(d) => cambia('a', d)} />
+          <CampoData contenitore={stretto ? undefined : LARGO} etichetta="Dal" valore={filtri.da} onChange={(d) => cambia('da', d)} />
+          <CampoData contenitore={stretto ? undefined : LARGO} etichetta="Al" valore={filtri.a} onChange={(d) => cambia('a', d)} />
         </View>
 
         {filtriAttivi ? (

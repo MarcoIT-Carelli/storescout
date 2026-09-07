@@ -25,6 +25,10 @@ import { supabase } from '@/lib/supabase';
 import type { Ispezione, StatoIspezione } from '@/types/database';
 import { raggio, SOGLIA_LARGA, spazio, testo, TOCCO_MIN, useColori } from '@/theme';
 
+/** In riga i campi si dividono la larghezza; in colonna si tengono la propria
+ *  altezza, e il flex li farebbe collassare uno sopra l'altro. */
+const LARGO = { flex: 1 } as const;
+
 const ASPETTO: Record<StatoIspezione, { etichetta: string; tono: Tono }> = {
   bozza: { etichetta: 'Bozza', tono: 'corso' },
   conclusa: { etichetta: 'Da inviare', tono: 'attenzione' },
@@ -133,15 +137,15 @@ export default function Storico() {
 
         <View style={[stili.riga, stretto && { flexDirection: 'column', alignItems: 'stretch' }]}>
           <Select
-            contenitore={stretto ? undefined : { flex: 1 }}
+            contenitore={stretto ? undefined : LARGO}
             etichetta="Punto vendita"
             opzioni={opzioniPdv}
             valore={pdvId}
             onChange={setPdvId}
             segnaposto="Tutti"
           />
-          <CampoData contenitore={stretto ? undefined : { flex: 1 }} etichetta="Dal" valore={da} onChange={setDa} />
-          <CampoData contenitore={stretto ? undefined : { flex: 1 }} etichetta="Al" valore={a} onChange={setA} />
+          <CampoData contenitore={stretto ? undefined : LARGO} etichetta="Dal" valore={da} onChange={setDa} />
+          <CampoData contenitore={stretto ? undefined : LARGO} etichetta="Al" valore={a} onChange={setA} />
         </View>
 
         {filtriAttivi ? (

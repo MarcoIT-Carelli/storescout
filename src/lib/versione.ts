@@ -10,7 +10,7 @@
  * La regola quindi è: `version` si alza solo quando si distribuisce un APK nuovo,
  * `REVISIONE` a ogni aggiornamento via rete.
  */
-export const REVISIONE = '0.0.7';
+export const REVISIONE = '0.0.8';
 
 /**
  * Che cosa è cambiato, per revisione. Compare una volta sola dopo l'aggiornamento.
@@ -20,6 +20,10 @@ export const REVISIONE = '0.0.7';
  * senza voci non mostra niente.
  */
 export const NOVITA: Record<string, string[]> = {
+  '0.0.8': [
+    'Sugli schermi stretti i filtri delle ispezioni ora si vedono incolonnati e leggibili: prima si accavallavano. La correzione precedente non aveva funzionato.',
+    'Le ispezioni si aprono solo da Amministrazione: erano raggiungibili anche dal menu, ed era la stessa porta due volte.',
+  ],
   '0.0.7': [
     'Sui telefoni e sugli schermi stretti i filtri delle ispezioni non si accavallano più: prima le caselle finivano una sopra l’altra e le scritte sparivano sotto.',
   ],
