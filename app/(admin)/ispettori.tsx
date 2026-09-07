@@ -5,6 +5,7 @@ import { Badge } from '@/components/Badge';
 import { BannerStato, INATTIVO, type StatoOperazione } from '@/components/BannerStato';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { ForzaPassword } from '@/components/ForzaPassword';
 import { ConfermaInLinea } from '@/components/ConfermaInLinea';
 import { Schermata } from '@/components/Schermata';
 import { Select } from '@/components/Select';
@@ -231,6 +232,7 @@ export default function Ispettori() {
                       autoCapitalize="none"
                       aiuto={`Almeno ${LUNGHEZZA_MINIMA_PASSWORD} caratteri. Verrà richiesto di cambiarla al primo accesso.`}
                     />
+                    <ForzaPassword password={modulo.password} />
                     <View style={stili.azioni}>
                       <Button
                         titolo="Genera"
@@ -364,6 +366,7 @@ export default function Ispettori() {
                 autoCapitalize="none"
                 aiuto={`Almeno ${LUNGHEZZA_MINIMA_PASSWORD} caratteri. L’app ne chiederà il cambio al primo accesso.`}
               />
+              <ForzaPassword password={modulo.password} />
               <View style={stili.azioni}>
                 <Button
                   titolo="Genera"

@@ -75,14 +75,5 @@ export async function salvaOrdine(tabella: Tabella, elenco: Voce[]): Promise<Voc
   return rinumerato;
 }
 
-/** Scambia una voce con quella accanto, restituendo il nuovo elenco già rinumerato. */
-export function scambia(elenco: Voce[], indice: number, direzione: -1 | 1): Voce[] {
-  const altro = indice + direzione;
-  if (altro < 0 || altro >= elenco.length) return elenco;
-  const copia = [...elenco];
-  [copia[indice], copia[altro]] = [copia[altro], copia[indice]];
-  return copia;
-}
-
 /** Controllo volutamente permissivo: serve a intercettare i refusi, non a validare la casella. */
 export const emailPlausibile = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e.trim());

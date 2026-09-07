@@ -7,6 +7,7 @@ import { Button } from '@/components/Button';
 import { Logo } from '@/components/Logo';
 import { Schermata } from '@/components/Schermata';
 import { TextField } from '@/components/TextField';
+import { ForzaPassword } from '@/components/ForzaPassword';
 import { parametriDaUrl } from '@/lib/collegamenti';
 import { messaggioErrore } from '@/lib/errori';
 import { supabase } from '@/lib/supabase';
@@ -211,6 +212,8 @@ export default function ReimpostaPassword() {
                 aiuto={`Almeno ${LUNGHEZZA_MINIMA} caratteri.`}
                 errore={corta ? `Servono almeno ${LUNGHEZZA_MINIMA} caratteri.` : undefined}
               />
+
+              <ForzaPassword password={nuova} />
               <TextField
                 etichetta="Ripeti la password"
                 value={ripeti}

@@ -6,6 +6,7 @@ import { BannerStato, INATTIVO, type StatoOperazione } from '@/components/Banner
 import { Button } from '@/components/Button';
 import { Schermata } from '@/components/Schermata';
 import { TextField } from '@/components/TextField';
+import { ForzaPassword } from '@/components/ForzaPassword';
 import { useAuth } from '@/hooks/useAuth';
 import { messaggioErrore } from '@/lib/errori';
 import { raggio, spazio, testo, useColori } from '@/theme';
@@ -90,6 +91,8 @@ export default function NuovaPassword() {
                   : undefined
             }
           />
+
+          <ForzaPassword password={nuova} />
 
           <TextField
             etichetta="Ripeti la password"

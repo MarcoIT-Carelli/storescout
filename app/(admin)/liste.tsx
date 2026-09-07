@@ -6,6 +6,7 @@ import { BannerStato, INATTIVO, type StatoOperazione } from '@/components/Banner
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { ConfermaInLinea } from '@/components/ConfermaInLinea';
+import { ElencoRiordinabile } from '@/components/ElencoRiordinabile';
 import { Schermata } from '@/components/Schermata';
 import { TextField } from '@/components/TextField';
 import { useListe } from '@/hooks/useListe';
@@ -17,7 +18,6 @@ import {
   ETICHETTE,
   leggiVoci,
   salvaOrdine,
-  scambia,
   type Tabella,
   type Voce,
 } from '@/lib/liste';
@@ -30,6 +30,7 @@ export default function ListeValori() {
   const { aggiorna: aggiornaCacheListe } = useListe();
 
   const [tabella, setTabella] = useState<Tabella>('destinatari');
+  const [trascinando, setTrascinando] = useState(false);
   const [voci, setVoci] = useState<Voce[]>([]);
   const [caricamento, setCaricamento] = useState(true);
   const [stato, setStato] = useState<StatoOperazione>(INATTIVO);
@@ -108,9 +109,11 @@ export default function ListeValori() {
     }
   };
 
-  const sposta = async (indice: number, direzione: -1 | 1) => {
-    const nuovoElenco = scambia(voci, indice, direzione);
-    if (nuovoElenco === voci) return;
+  const riordina = async (da: number, a: number) => {
+    if (da === a) return;
+    const nuovoElenco = [...voci];
+    const [presa] = nuovoElenco.splice(da, 1);
+    nuovoElenco.splice(a, 0, presa);
     setVoci(nuovoElenco.map((v, i) => ({ ...v, ordine: i + 1 })));
     try {
       setVoci(await salvaOrdine(tabella, nuovoElenco));
@@ -158,7 +161,11 @@ export default function ListeValori() {
         })}
       </View>
 
-      <ScrollView contentContainerStyle={stili.corpo} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={stili.corpo}
+        keyboardShouldPersistTaps="handled"
+        scrollEnabled={!trascinando}
+      >
         <BannerStato stato={stato} onRiprova={carica} onChiudi={() => setStato(INATTIVO)} />
 
         {senzaEmail ? (
@@ -174,10 +181,17 @@ export default function ListeValori() {
         {caricamento ? (
           <ActivityIndicator color={c.testoSecondario} style={{ marginTop: spazio.xl }} />
         ) : (
-          voci.map((v, i) => {
+          <ElencoRiordinabile
+            dati={voci}
+            chiave={(v) => v.id}
+            onRiordina={riordina}
+            onTrascinamento={setTrascinando}
+            bloccato={inModifica !== null || nuova}
+          >
+            {(v, i) => {
             const inEdit = inModifica === v.id;
             return (
-              <Card key={v.id} style={{ opacity: v.attivo ? 1 : 0.6 }}>
+              <Card style={{ opacity: v.attivo ? 1 : 0.6 }}>
                 {inEdit ? (
                   <View style={{ gap: spazio.md }}>
                     <TextField etichetta="Nome" value={nome} onChangeText={setNome} autoCapitalize="characters" />
@@ -207,11 +221,6 @@ export default function ListeValori() {
                 ) : (
                   <>
                     <View style={stili.riga}>
-                      <View style={stili.frecce}>
-                        <Freccia verso="su" attiva={i > 0} onPress={() => sposta(i, -1)} />
-                        <Freccia verso="giu" attiva={i < voci.length - 1} onPress={() => sposta(i, 1)} />
-                      </View>
-
                       <View style={stili.dati}>
                         <Text style={[testo.corpoForte, { color: c.testo }]}>{v.nome}</Text>
                         {conEmail ? (
@@ -261,7 +270,8 @@ export default function ListeValori() {
                 )}
               </Card>
             );
-          })
+            }}
+          </ElencoRiordinabile>
         )}
 
         {nuova ? (
@@ -310,22 +320,6 @@ export default function ListeValori() {
   );
 }
 
-function Freccia({ verso, attiva, onPress }: { verso: 'su' | 'giu'; attiva: boolean; onPress: () => void }) {
-  const c = useColori();
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={!attiva}
-      hitSlop={6}
-      style={({ pressed }) => [stili.freccia, { opacity: attiva ? (pressed ? 0.5 : 1) : 0.25 }]}
-      accessibilityRole="button"
-      accessibilityLabel={verso === 'su' ? 'Sposta in su' : 'Sposta in giù'}
-    >
-      <Text style={{ color: c.testo, fontSize: 15 }}>{verso === 'su' ? '▲' : '▼'}</Text>
-    </Pressable>
-  );
-}
-
 const stili = StyleSheet.create({
   schede: {
     flexDirection: 'row',
@@ -344,8 +338,6 @@ const stili = StyleSheet.create({
   corpo: { padding: spazio.lg, gap: spazio.md, paddingBottom: spazio.xxxl },
   avviso: { borderWidth: 1, borderRadius: raggio.md, padding: spazio.md },
   riga: { flexDirection: 'row', alignItems: 'center', gap: spazio.md, flexWrap: 'wrap' },
-  frecce: { gap: 2 },
-  freccia: { width: 30, height: 24, alignItems: 'center', justifyContent: 'center' },
   dati: { flex: 1, gap: 2, minWidth: 160 },
   azione: { minHeight: TOCCO_MIN, justifyContent: 'center', paddingHorizontal: spazio.sm },
   azioni: { flexDirection: 'row', gap: spazio.sm, justifyContent: 'flex-end' },
