@@ -2,7 +2,6 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
-import { AvvisoAggiornamento } from '@/components/AvvisoAggiornamento';
 import { AvvisoNovita } from '@/components/AvvisoNovita';
 import { Badge, type Tono } from '@/components/Badge';
 import { BannerStato, INATTIVO, type StatoOperazione } from '@/components/BannerStato';
@@ -11,7 +10,7 @@ import { Card } from '@/components/Card';
 import { Logo } from '@/components/Logo';
 import { MenuUtente } from '@/components/MenuUtente';
 import { Schermata } from '@/components/Schermata';
-import { useAggiornamenti, useNovita } from '@/hooks/useAggiornamenti';
+import { useAggiornamenti, useNovita, type Fase } from '@/hooks/useAggiornamenti';
 import { useAuth } from '@/hooks/useAuth';
 import { useListe } from '@/hooks/useListe';
 import { leggiBozze } from '@/db/bozze';
@@ -32,6 +31,16 @@ const saluto = () => {
   if (h < 13) return 'Buongiorno';
   if (h < 18) return 'Buon pomeriggio';
   return 'Buonasera';
+};
+
+/** Solo gli esiti della ricerca chiesta dall'utente: il resto lo copre lo sbarramento. */
+const ESITO_RICERCA: Partial<Record<Fase, StatoOperazione>> = {
+  verifica: { tipo: 'inCorso', messaggio: 'Controllo se c’è una versione più recente…' },
+  aggiornato: { tipo: 'riuscito', messaggio: 'StoreScout è già aggiornato all’ultima versione.' },
+  errore_verifica: {
+    tipo: 'fallito',
+    messaggio: 'Non è riuscito a controllare: senza rete non si sa se ci sono novità.',
+  },
 };
 
 const ASPETTO: Record<StatoIspezione, { etichetta: string; tono: Tono }> = {
@@ -140,11 +149,6 @@ export default function Home() {
               style={stili.principale}
             />
 
-            <AvvisoAggiornamento
-              stato={aggiornamento.stato}
-              onAggiorna={aggiornamento.scarica}
-              onChiudi={aggiornamento.chiudi}
-            />
 
             {daCache ? (
               <BannerStato
@@ -156,6 +160,11 @@ export default function Home() {
             ) : null}
 
             <BannerStato stato={stato} onRiprova={carica} onChiudi={() => setStato(INATTIVO)} />
+
+            <BannerStato
+              stato={ESITO_RICERCA[aggiornamento.fase] ?? INATTIVO}
+              onChiudi={aggiornamento.chiudi}
+            />
 
             <Text style={[testo.etichetta, { color: c.testoSecondario }]}>ULTIME ISPEZIONI</Text>
           </View>

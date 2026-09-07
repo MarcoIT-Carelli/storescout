@@ -10,7 +10,7 @@
  * La regola quindi è: `version` si alza solo quando si distribuisce un APK nuovo,
  * `REVISIONE` a ogni aggiornamento via rete.
  */
-export const REVISIONE = '0.0.5';
+export const REVISIONE = '0.0.6';
 
 /**
  * Che cosa è cambiato, per revisione. Compare una volta sola dopo l'aggiornamento.
@@ -20,6 +20,10 @@ export const REVISIONE = '0.0.5';
  * senza voci non mostra niente.
  */
 export const NOVITA: Record<string, string[]> = {
+  '0.0.6': [
+    'Quando esce una versione nuova l’app la installa da sé all’apertura, e fino ad allora non si può lavorare: così nessuna scheda parte da una versione superata.',
+    'Le schede lasciate a metà restano sul dispositivo anche durante l’aggiornamento.',
+  ],
   '0.0.5': [
     'Nei campi password c’è un occhio per vedere quello che stai scrivendo.',
     'Quando scegli una password nuova, tre tacche sotto il campo dicono se è debole, discreta o robusta.',

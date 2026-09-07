@@ -6,7 +6,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { SchermoAggiornamento } from '@/components/SchermoAggiornamento';
 import { SplashAnimation } from '@/components/SplashAnimation';
+import { AggiornamentiProvider, useAggiornamenti } from '@/hooks/useAggiornamenti';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { ListeProvider } from '@/hooks/useListe';
 import { APERTURA, leggiTemaSalvato, ThemeProvider, useTema, type Preferenza, type Schema } from '@/theme';
@@ -42,7 +44,9 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ThemeProvider preferenzaIniziale={avvio.preferenza}>
         <AuthProvider>
-          <Contenuto />
+          <AggiornamentiProvider>
+            <Contenuto />
+          </AggiornamentiProvider>
         </AuthProvider>
         {splashFinita ? null : <SplashAnimation schema={avvio.ultimo} onFine={fineSplash} />}
       </ThemeProvider>
@@ -53,6 +57,7 @@ export default function RootLayout() {
 function Contenuto() {
   const { colori, scuro } = useTema();
   const { caricamento, sessione, profilo } = useAuth();
+  const aggiornamento = useAggiornamenti();
   const segmenti = useSegments() as string[];
   const router = useRouter();
 
@@ -110,6 +115,12 @@ function Contenuto() {
         <View style={[StyleSheet.absoluteFill, stili.attesa, { backgroundColor: colori.sfondo }]}>
           <ActivityIndicator color={colori.testoSecondario} />
         </View>
+      ) : null}
+      {/* Sopra ogni cosa: il controllo parte all'apertura e l'app puo' riaprirsi
+          ovunque fosse stata lasciata, quindi lo sbarramento non puo' vivere in
+          una schermata sola. */}
+      {aggiornamento.bloccante ? (
+        <SchermoAggiornamento fase={aggiornamento.fase} onRiprova={aggiornamento.scarica} />
       ) : null}
     </ListeProvider>
   );
