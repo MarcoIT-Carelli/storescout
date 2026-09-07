@@ -2,6 +2,9 @@
   "expo": {
     "name": "StoreScout",
     "slug": "storescout",
+    "platforms": [
+      "android"
+    ],
     "version": "1.0.0",
     "scheme": "storescout",
     "orientation": "default",
@@ -20,9 +23,6 @@
       "runtimeVersion": {
         "policy": "appVersion"
       }
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-router",
@@ -54,6 +54,8 @@
       "url": "https://u.expo.dev/ec71b8a6-43b5-45f0-af9a-80bc2c035ff1",
       "checkAutomatically": "ON_ERROR_RECOVERY"
     },
-    "ios": {}
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
   }
 }
