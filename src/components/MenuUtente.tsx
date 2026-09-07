@@ -12,7 +12,9 @@ const TEMI: { valore: Preferenza; etichetta: string }[] = [
   { valore: 'scuro', etichetta: 'Scuro' },
 ];
 
-export function MenuUtente() {
+/** `onCercaAggiornamenti` arriva solo dalla schermata iniziale: è l'unica da cui si può
+ *  riavviare l'app senza interrompere una scheda a metà. */
+export function MenuUtente({ onCercaAggiornamenti }: { onCercaAggiornamenti?: () => void }) {
   const c = useColori();
   const { preferenza, impostaPreferenza } = useTema();
   const { profilo, esci } = useAuth();
@@ -111,6 +113,15 @@ export function MenuUtente() {
                 }}
               />
             )}
+            {onCercaAggiornamenti ? (
+              <Voce
+                etichetta="Cerca aggiornamenti"
+                onPress={() => {
+                  setAperto(false);
+                  onCercaAggiornamenti();
+                }}
+              />
+            ) : null}
             <Voce
               etichetta="Cambia password"
               onPress={() => {

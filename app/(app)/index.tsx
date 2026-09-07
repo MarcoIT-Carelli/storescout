@@ -111,7 +111,7 @@ export default function Home() {
             Schede attività ispettore
           </Text>
         </View>
-        <MenuUtente />
+        <MenuUtente onCercaAggiornamenti={aggiornamento.cerca} />
       </View>
 
       <FlatList
@@ -140,7 +140,11 @@ export default function Home() {
               style={stili.principale}
             />
 
-            <AvvisoAggiornamento stato={aggiornamento.stato} onAggiorna={aggiornamento.scarica} />
+            <AvvisoAggiornamento
+              stato={aggiornamento.stato}
+              onAggiorna={aggiornamento.scarica}
+              onChiudi={aggiornamento.chiudi}
+            />
 
             {daCache ? (
               <BannerStato

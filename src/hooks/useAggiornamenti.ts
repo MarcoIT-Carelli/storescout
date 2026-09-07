@@ -17,30 +17,44 @@ import { NOVITA, REVISIONE } from '@/lib/versione';
 
 const CHIAVE_VISTA = 'storescout.revisione.vista';
 
-export type StatoAggiornamento = 'assente' | 'disponibile' | 'scaricamento' | 'fallito';
+export type StatoAggiornamento =
+  | 'assente'
+  | 'verifica'
+  | 'disponibile'
+  | 'aggiornato'
+  | 'scaricamento'
+  | 'fallito';
 
 export function useAggiornamenti() {
   const [stato, setStato] = useState<StatoAggiornamento>('assente');
 
-  useEffect(() => {
+  /**
+   * `manuale` distingue i due modi di arrivare qui. All'apertura si tace se non c'è
+   * niente da dire; se invece è l'utente ad aver chiesto, una risposta la merita —
+   * anche quando la risposta è «sei già aggiornato».
+   */
+  const cerca = useCallback(async (manuale = false) => {
     // In sviluppo e nelle build compilate a mano il modulo è spento: senza questo
     // controllo ogni avvio finirebbe in un errore che non riguarda l'utente.
-    if (!Updates.isEnabled) return;
+    if (!Updates.isEnabled) {
+      if (manuale) setStato('aggiornato');
+      return;
+    }
 
-    let vivo = true;
-    Updates.checkForUpdateAsync()
-      .then((esito) => {
-        if (vivo && esito.isAvailable) setStato('disponibile');
-      })
-      .catch(() => {
-        // Nessuna rete, o server irraggiungibile: non è un errore da mostrare a chi
-        // sta per entrare in un punto vendita. Si riproverà alla prossima apertura.
-      });
-
-    return () => {
-      vivo = false;
-    };
+    if (manuale) setStato('verifica');
+    try {
+      const esito = await Updates.checkForUpdateAsync();
+      setStato(esito.isAvailable ? 'disponibile' : manuale ? 'aggiornato' : 'assente');
+    } catch {
+      // All'apertura si tace: nessuna rete non è un errore da mostrare a chi sta per
+      // entrare in un punto vendita. Se invece l'ha chiesto lui, va detto.
+      setStato(manuale ? 'fallito' : 'assente');
+    }
   }, []);
+
+  useEffect(() => {
+    void cerca();
+  }, [cerca]);
 
   const scarica = useCallback(async () => {
     setStato('scaricamento');
@@ -54,7 +68,12 @@ export function useAggiornamenti() {
     }
   }, []);
 
-  return { stato, scarica, riprova: scarica };
+  return {
+    stato,
+    scarica,
+    cerca: () => void cerca(true),
+    chiudi: () => setStato('assente'),
+  };
 }
 
 /**
