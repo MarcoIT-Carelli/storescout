@@ -160,11 +160,6 @@ export default function Home() {
             <Text style={[testo.etichetta, { color: c.testoSecondario }]}>ULTIME ISPEZIONI</Text>
           </View>
         }
-        ListFooterComponent={
-          <Text style={[testo.piccolo, stili.versione, { color: c.testoDisabilitato }]}>
-            versione {REVISIONE}
-          </Text>
-        }
         ListEmptyComponent={
           aggiornando ? null : (
             <Card>
@@ -240,6 +235,15 @@ export default function Home() {
           );
         }}
       />
+      {/* Fuori dalla lista e non dentro: cosi' resta in fondo allo schermo invece di
+          scorrere via col contenuto. Serve a chi chiede assistenza — la prima domanda
+          e' sempre "che versione hai". */}
+      <View style={[stili.piede, { borderTopColor: c.bordo }]}>
+        <Text style={[testo.piccolo, stili.versione, { color: c.testoDisabilitato }]}>
+          versione {REVISIONE}
+        </Text>
+      </View>
+
       <AvvisoNovita voci={novita.voci} onChiudi={novita.chiudi} />
     </Schermata>
   );
@@ -267,6 +271,7 @@ const stili = StyleSheet.create({
     borderColor: 'transparent',
   },
   centro: { flex: 1, gap: 2 },
-  versione: { textAlign: 'center', marginTop: spazio.xl },
+  piede: { borderTopWidth: 1, paddingVertical: spazio.sm },
+  versione: { textAlign: 'center' },
   destra: { alignItems: 'flex-end', gap: spazio.xs },
 });
