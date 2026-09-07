@@ -103,11 +103,11 @@ export default function Home() {
 
   return (
     <Schermata>
-      <View style={[stili.testata, { borderBottomColor: c.bordo, backgroundColor: c.superficie }]}>
-        <Logo larghezza={34} colore={c.marchio} conScritta={false} />
+      <View style={[stili.testata, { borderBottomColor: c.gialloPremuto, backgroundColor: c.giallo }]}>
+        <Logo larghezza={34} colore={c.suGiallo} conScritta={false} />
         <View style={{ flex: 1 }}>
-          <Text style={[testo.corpoForte, { color: c.testo }]}>StoreScout</Text>
-          <Text style={[testo.etichetta, { color: c.testoSecondario, fontWeight: '400' }]}>
+          <Text style={[testo.corpoForte, { color: c.suGiallo }]}>StoreScout</Text>
+          <Text style={[testo.etichetta, { color: c.suGiallo, opacity: 0.75, fontWeight: '400' }]}>
             Schede attività ispettore
           </Text>
         </View>
@@ -212,8 +212,8 @@ export default function Home() {
             >
               <Card>
                 <View style={stili.riga}>
-                  <View style={[stili.sigla, { backgroundColor: c.superficieAlt, borderColor: c.bordo }]}>
-                    <Text style={[testo.sigla, { color: c.testo }]}>{pdv?.codice ?? '··'}</Text>
+                  <View style={[stili.sigla, { backgroundColor: c.giallo, borderColor: c.giallo }]}>
+                    <Text style={[testo.sigla, { color: c.suGiallo }]}>{pdv?.codice ?? '··'}</Text>
                   </View>
                   <View style={stili.centro}>
                     <Text style={[testo.corpoForte, { color: c.testo }]} numberOfLines={1}>

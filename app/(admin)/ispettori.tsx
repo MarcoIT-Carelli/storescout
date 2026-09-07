@@ -142,7 +142,7 @@ export default function Ispettori() {
   };
 
   return (
-    <Schermata titolo="Ispettori" sottotitolo="Chi può accedere all’app" indietro tinta="giallo">
+    <Schermata titolo="Ispettori" sottotitolo="Chi può accedere all’app" indietro>
       <ScrollView contentContainerStyle={stili.corpo} keyboardShouldPersistTaps="handled">
         <BannerStato stato={stato} onRiprova={carica} onChiudi={() => setStato(INATTIVO)} />
 

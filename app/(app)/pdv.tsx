@@ -138,8 +138,8 @@ export default function SelezionePdv() {
                 ]}
                 accessibilityRole="button"
               >
-                <View style={[stili.sigla, { backgroundColor: c.superficieAlt, borderColor: c.bordo }]}>
-                  <Text style={[testo.sigla, { color: c.testo }]}>{item.pdv.codice}</Text>
+                <View style={[stili.sigla, { backgroundColor: c.giallo, borderColor: c.giallo }]}>
+                  <Text style={[testo.sigla, { color: c.suGiallo }]}>{item.pdv.codice}</Text>
                 </View>
                 <View style={stili.dati}>
                   <Text style={[testo.corpoForte, { color: c.testo }]} numberOfLines={1}>

@@ -198,7 +198,6 @@ export default function PuntiVendita() {
       titolo="Punti vendita"
       sottotitolo={`${pdv.filter((p) => p.attivo).length} attivi su ${pdv.length}`}
       indietro
-      tinta="giallo"
     >
       <View style={[stili.testata, { backgroundColor: c.superficie, borderBottomColor: c.bordo }]}>
         <TextInput

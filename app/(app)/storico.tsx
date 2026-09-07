@@ -191,8 +191,8 @@ export default function Storico() {
             >
               <Card>
                 <View style={stili.vocElenco}>
-                  <View style={[stili.sigla, { backgroundColor: c.superficieAlt, borderColor: c.bordo }]}>
-                    <Text style={[testo.sigla, { color: c.testo }]}>{pdv?.codice ?? '··'}</Text>
+                  <View style={[stili.sigla, { backgroundColor: c.giallo, borderColor: c.giallo }]}>
+                    <Text style={[testo.sigla, { color: c.suGiallo }]}>{pdv?.codice ?? '··'}</Text>
                   </View>
                   <View style={stili.dati}>
                     <Text style={[testo.corpoForte, { color: c.testo }]} numberOfLines={1}>

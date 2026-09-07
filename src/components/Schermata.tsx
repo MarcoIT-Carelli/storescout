@@ -12,30 +12,18 @@ type Props = {
   indietro?: boolean;
   onIndietro?: () => void;
   azioni?: ReactNode;
-  /**
-   * Testata gialla, riempimento con testo nero sopra: distingue a colpo d'occhio le
-   * schermate di configurazione da quelle su cui si lavora dentro il punto vendita.
-   */
-  tinta?: 'giallo';
   children: ReactNode;
 };
 
-export function Schermata({
-  titolo,
-  sottotitolo,
-  indietro,
-  onIndietro,
-  azioni,
-  tinta,
-  children,
-}: Props) {
+export function Schermata({ titolo, sottotitolo, indietro, onIndietro, azioni, children }: Props) {
   const c = useColori();
   const router = useRouter();
 
   const conTestata = Boolean(titolo || indietro || azioni);
 
-  const gialla = tinta === 'giallo';
-  const inchiostro = gialla ? c.suGiallo : c.testo;
+  // Testata gialla ovunque: riempimento con testo nero sopra. Una schermata sola con
+  // la barra scura si noterebbe come un errore, non come una distinzione.
+  const inchiostro = c.suGiallo;
 
   return (
     // `bottom` fra i bordi protetti: senza, la barra di sistema — i tre tasti o la
@@ -51,10 +39,7 @@ export function Schermata({
         <View
           style={[
             stili.testata,
-            {
-              borderBottomColor: gialla ? c.gialloPremuto : c.bordo,
-              backgroundColor: gialla ? c.giallo : c.superficie,
-            },
+            { borderBottomColor: c.gialloPremuto, backgroundColor: c.giallo },
           ]}
         >
           {indietro ? (
@@ -85,9 +70,7 @@ export function Schermata({
               <Text
                 style={[
                   testo.piccolo,
-                  gialla
-                    ? { color: c.suGiallo, opacity: 0.75 }
-                    : { color: c.testoSecondario },
+                  { color: c.suGiallo, opacity: 0.75 },
                 ]}
                 numberOfLines={1}
               >

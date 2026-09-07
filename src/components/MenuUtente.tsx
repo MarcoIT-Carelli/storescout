@@ -29,12 +29,14 @@ export function MenuUtente({ onCercaAggiornamenti }: { onCercaAggiornamenti?: ()
         onPress={() => setAperto(true)}
         accessibilityRole="button"
         accessibilityLabel="Menu utente"
+        // Vive solo nella testata gialla della home: i colori del tema qui
+        // sparirebbero, quindi il contorno e le iniziali sono neri fissi.
         style={({ pressed }) => [
           stili.avatar,
-          { backgroundColor: c.superficieAlt, borderColor: c.bordo, opacity: pressed ? 0.6 : 1 },
+          { backgroundColor: 'transparent', borderColor: c.suGiallo, opacity: pressed ? 0.5 : 1 },
         ]}
       >
-        <Text style={[testo.corpoForte, { color: c.testo }]}>
+        <Text style={[testo.corpoForte, { color: c.suGiallo }]}>
           {profilo ? iniziali(profilo.nome, profilo.cognome) : '—'}
         </Text>
       </Pressable>

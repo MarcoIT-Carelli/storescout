@@ -206,7 +206,7 @@ export default function IspezioniAdmin() {
       titolo="Ispezioni ed export"
       sottotitolo="Tutte le ispezioni, bozze comprese"
       indietro
-      tinta="giallo"
+     
       azioni={
         <Button
           titolo="Esporta CSV"
@@ -337,9 +337,9 @@ export default function IspezioniAdmin() {
               <Card inCorso={occupato === item.id}>
                 <View style={stili.voce}>
                   <View
-                    style={[stili.sigla, { backgroundColor: c.superficieAlt, borderColor: c.bordo }]}
+                    style={[stili.sigla, { backgroundColor: c.giallo, borderColor: c.giallo }]}
                   >
-                    <Text style={[testo.sigla, { color: c.testo }]}>{pdv?.codice ?? '··'}</Text>
+                    <Text style={[testo.sigla, { color: c.suGiallo }]}>{pdv?.codice ?? '··'}</Text>
                   </View>
                   <View style={stili.dati}>
                     <Text style={[testo.corpoForte, { color: c.testo }]} numberOfLines={1}>
