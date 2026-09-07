@@ -7,6 +7,7 @@ import {
   Text,
   View,
   type LayoutChangeEvent,
+  type ViewStyle,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { captureRef } from 'react-native-view-shot';
@@ -33,10 +34,23 @@ type Props = {
   valore: string | null;
   onConferma: (uri: string) => void;
   onCancella: () => void;
+  /**
+   * Come si dimensiona. Affiancate le due firme si dividono la larghezza; impilate
+   * devono tenersi la propria altezza, e il flex le farebbe collassare una
+   * sull'altra proprio dove servono di piu'.
+   */
+  contenitore?: ViewStyle;
   altezza?: number;
 };
 
-export function SignaturePad({ etichetta, valore, onConferma, onCancella, altezza = 200 }: Props) {
+export function SignaturePad({
+  etichetta,
+  valore,
+  onConferma,
+  onCancella,
+  altezza = 200,
+  contenitore,
+}: Props) {
   const c = useColori();
   const [tratti, setTratti] = useState<string[]>([]);
   const [corrente, setCorrente] = useState<string | null>(null);
@@ -101,7 +115,7 @@ export function SignaturePad({ etichetta, valore, onConferma, onCancella, altezz
   };
 
   return (
-    <View style={{ gap: spazio.sm, flex: 1, minWidth: 260 }}>
+    <View style={[{ gap: spazio.sm }, contenitore]}>
       <Text style={[testo.etichetta, { color: c.testoSecondario }]}>{etichetta}</Text>
 
       {valore ? (

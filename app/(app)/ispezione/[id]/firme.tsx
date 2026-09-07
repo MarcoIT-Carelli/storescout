@@ -55,13 +55,14 @@ export default function Firme() {
 
         <View style={[stili.riquadri, stretto && { flexDirection: 'column' }]}>
           <SignaturePad
+            contenitore={stretto ? undefined : LARGO}
             etichetta="FIRMA ISPETTORE"
             valore={bozza.firma_ispettore_uri}
             onConferma={(uri) => modifica((b) => ({ ...b, firma_ispettore_uri: uri }))}
             onCancella={() => modifica((b) => ({ ...b, firma_ispettore_uri: null }))}
           />
 
-          <View style={stili.colonna}>
+          <View style={stretto ? stili.colonnaStretta : stili.colonna}>
             <SignaturePad
               etichetta="FIRMA RESPONSABILE PUNTO VENDITA"
               valore={bozza.firma_responsabile_uri}
@@ -100,11 +101,15 @@ export default function Firme() {
   );
 }
 
+/** Affiancate si dividono la larghezza; impilate non devono avere flex. */
+const LARGO = { flex: 1, minWidth: 260 } as const;
+
 const stili = StyleSheet.create({
   attesa: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   corpo: { padding: spazio.lg, gap: spazio.lg, paddingBottom: spazio.xxl },
   riquadri: { flexDirection: 'row', gap: spazio.lg },
   colonna: { flex: 1, gap: spazio.md, minWidth: 260 },
+  colonnaStretta: { gap: spazio.md },
   motivo: { borderWidth: 1, borderRadius: raggio.md, padding: spazio.md },
   barra: { flexDirection: 'row', gap: spazio.md, padding: spazio.lg, borderTopWidth: 1 },
 });

@@ -8,6 +8,7 @@ import {
   Text,
   useWindowDimensions,
   View,
+  type ViewStyle,
 } from 'react-native';
 
 import { Badge, type Tono } from '@/components/Badge';
@@ -189,9 +190,9 @@ export default function Esito() {
             attivita.map((a) => (
               <Card key={a.ordine}>
                 <View style={[stili.tendine, stretto && { flexDirection: 'column' }]}>
-                  <Voce etichetta="Destinatario" valore={a.destinatari?.nome ?? '—'} compatta />
-                  <Voce etichetta="Reparto" valore={a.reparti?.nome ?? '—'} compatta />
-                  <Voce etichetta="Tipo di intervento" valore={a.tipi_intervento?.nome ?? '—'} compatta />
+                  <Voce contenitore={stretto ? undefined : { flex: 1, minWidth: 140 }} etichetta="Destinatario" valore={a.destinatari?.nome ?? '—'} compatta />
+                  <Voce contenitore={stretto ? undefined : { flex: 1, minWidth: 140 }} etichetta="Reparto" valore={a.reparti?.nome ?? '—'} compatta />
+                  <Voce contenitore={stretto ? undefined : { flex: 1, minWidth: 140 }} etichetta="Tipo di intervento" valore={a.tipi_intervento?.nome ?? '—'} compatta />
                 </View>
                 {a.note ? (
                   <Text style={[testo.corpo, { color: c.testo, marginTop: spazio.md }]}>{a.note}</Text>
@@ -248,15 +249,18 @@ function Voce({
   etichetta,
   valore,
   compatta = false,
+  contenitore,
 }: {
   etichetta: string;
   valore: string;
   compatta?: boolean;
+  /** Vedi `Select`: affiancate si dividono la larghezza, incolonnate il flex le schiaccia. */
+  contenitore?: ViewStyle;
 }) {
   const c = useColori();
   if (compatta) {
     return (
-      <View style={{ flex: 1, gap: 2, minWidth: 140 }}>
+      <View style={[{ gap: 2 }, contenitore]}>
         <Text style={[testo.etichetta, { color: c.testoSecondario }]}>{etichetta.toUpperCase()}</Text>
         <Text style={[testo.corpoForte, { color: c.testo }]}>{valore}</Text>
       </View>
