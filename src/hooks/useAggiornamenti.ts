@@ -7,12 +7,15 @@ import { NOVITA, REVISIONE } from '@/lib/versione';
 /**
  * Aggiornamenti dell'app senza reinstallare niente.
  *
- * La ricerca parte da sola all'apertura, ma **lo scaricamento no**: l'ispettore può
- * essere in mezzo a un giro di negozi con la rete che va e viene, e decidere lui
- * quando spendere qualche megabyte è più rispettoso che farlo di nascosto. Per lo
- * stesso motivo l'avviso vive solo nella schermata iniziale: applicare un
- * aggiornamento riavvia l'app, e riavviarla mentre si compila una scheda sarebbe
- * un ottimo modo per farsi odiare.
+ * Gli aggiornamenti si scaricano da soli all'apertura e si applicano al riavvio
+ * successivo: e' `expo-updates` a farlo, senza chiedere niente. Il banner qui sotto
+ * non e' una richiesta di permesso, e' una scorciatoia — permette di applicare subito
+ * quello che altrimenti arriverebbe alla prossima apertura.
+ *
+ * Vive solo nella schermata iniziale perche' applicare un aggiornamento riavvia
+ * l'app, e riavviarla mentre si compila una scheda sarebbe un ottimo modo per farsi
+ * odiare. Quello che l'ispettore vede sempre, invece, e' il riepilogo delle novita'
+ * dopo il riavvio: e' li' che si accorge che qualcosa e' cambiato.
  */
 
 const CHIAVE_VISTA = 'storescout.revisione.vista';

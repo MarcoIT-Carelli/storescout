@@ -52,7 +52,7 @@
     "owner": "carelli-distribuzione",
     "updates": {
       "url": "https://u.expo.dev/ec71b8a6-43b5-45f0-af9a-80bc2c035ff1",
-      "checkAutomatically": "ON_ERROR_RECOVERY"
+      "checkAutomatically": "ON_LOAD"
     },
     "runtimeVersion": {
       "policy": "appVersion"
