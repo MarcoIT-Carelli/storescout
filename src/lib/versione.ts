@@ -21,6 +21,7 @@ export const REVISIONE = '0.0.3';
  */
 export const NOVITA: Record<string, string[]> = {
   '0.0.3': [
+    'I pulsanti in fondo allo schermo — «Concludi ispezione», «Salva bozza» — non finiscono più sotto la barra del telefono.',
     'Il numero di versione resta sempre visibile in fondo allo schermo, anche mentre scorri l’elenco delle ispezioni.',
   ],
   '0.0.2': [

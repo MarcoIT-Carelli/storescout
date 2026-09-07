@@ -38,7 +38,15 @@ export function Schermata({
   const inchiostro = gialla ? c.suGiallo : c.testo;
 
   return (
-    <SafeAreaView style={[stili.pagina, { backgroundColor: c.sfondo }]} edges={['top', 'left', 'right']}>
+    // `bottom` fra i bordi protetti: senza, la barra di sistema — i tre tasti o la
+    // riga dei gesti — si sovrappone a tutto ciò che sta in fondo allo schermo, e in
+    // questa app in fondo ci stanno «Concludi ispezione» e «Salva bozza». Nasconderla
+    // non basterebbe: su Android moderno la zona del gesto resta sensibile anche
+    // quando la barra non si vede, e intercetterebbe il tocco al posto del pulsante.
+    <SafeAreaView
+      style={[stili.pagina, { backgroundColor: c.sfondo }]}
+      edges={['top', 'left', 'right', 'bottom']}
+    >
       {conTestata ? (
         <View
           style={[
