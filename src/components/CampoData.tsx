@@ -1,5 +1,5 @@
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { dataBreve } from '@/lib/format';
 import { raggio, spazio, testo, TOCCO_MIN, useColori } from '@/theme';
@@ -8,10 +8,12 @@ type Props = {
   etichetta: string;
   valore: Date | null;
   onChange: (d: Date | null) => void;
+  /** Vedi la nota in `Select`: in colonna `flex: 1` fa collassare il campo. */
+  contenitore?: ViewStyle;
 };
 
 /** Estremo di un intervallo di date. Vuoto significa «nessun limite», non «oggi». */
-export function CampoData({ etichetta, valore, onChange }: Props) {
+export function CampoData({ etichetta, valore, onChange, contenitore }: Props) {
   const c = useColori();
 
   const apri = () => {
@@ -27,7 +29,7 @@ export function CampoData({ etichetta, valore, onChange }: Props) {
   };
 
   return (
-    <View style={{ flex: 1, gap: spazio.xs }}>
+    <View style={[{ gap: spazio.xs }, contenitore ?? { flex: 1 }]}>
       <Text style={[testo.etichetta, { color: c.testoSecondario }]}>{etichetta}</Text>
       <View style={stili.campo}>
         <Pressable

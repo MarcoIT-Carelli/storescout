@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
-import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View ,
+  type ViewStyle,
+} from 'react-native';
 
 import { raggio, spazio, testo, TOCCO_MIN, useColori } from '@/theme';
 
@@ -15,6 +17,12 @@ type Props = {
   errore?: boolean;
   /** Sopra questa soglia compare il campo di ricerca dentro l'elenco. */
   sogliaRicerca?: number;
+  /**
+   * Come si dimensiona nel contenitore. Serve perche' `flex: 1` e' giusto dentro una
+   * riga, dove i campi si dividono la larghezza, ma dentro una colonna fa dividere
+   * l'altezza di un contenitore che altezza propria non ne ha, e i campi collassano.
+   */
+  contenitore?: ViewStyle;
 };
 
 export function Select({
@@ -26,6 +34,7 @@ export function Select({
   disabilitato = false,
   errore = false,
   sogliaRicerca = 12,
+  contenitore,
 }: Props) {
   const c = useColori();
   const [aperto, setAperto] = useState(false);
@@ -45,7 +54,7 @@ export function Select({
   };
 
   return (
-    <View style={{ gap: spazio.xs, flex: 1 }}>
+    <View style={[{ gap: spazio.xs }, contenitore ?? { flex: 1 }]}>
       <Text style={[testo.etichetta, { color: c.testoSecondario }]}>{etichetta}</Text>
 
       <Pressable

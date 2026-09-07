@@ -133,14 +133,15 @@ export default function Storico() {
 
         <View style={[stili.riga, stretto && { flexDirection: 'column', alignItems: 'stretch' }]}>
           <Select
+            contenitore={stretto ? undefined : { flex: 1 }}
             etichetta="Punto vendita"
             opzioni={opzioniPdv}
             valore={pdvId}
             onChange={setPdvId}
             segnaposto="Tutti"
           />
-          <CampoData etichetta="Dal" valore={da} onChange={setDa} />
-          <CampoData etichetta="Al" valore={a} onChange={setA} />
+          <CampoData contenitore={stretto ? undefined : { flex: 1 }} etichetta="Dal" valore={da} onChange={setDa} />
+          <CampoData contenitore={stretto ? undefined : { flex: 1 }} etichetta="Al" valore={a} onChange={setA} />
         </View>
 
         {filtriAttivi ? (
