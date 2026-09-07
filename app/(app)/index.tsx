@@ -2,6 +2,8 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
+import { AvvisoAggiornamento } from '@/components/AvvisoAggiornamento';
+import { AvvisoNovita } from '@/components/AvvisoNovita';
 import { Badge, type Tono } from '@/components/Badge';
 import { BannerStato, INATTIVO, type StatoOperazione } from '@/components/BannerStato';
 import { Button } from '@/components/Button';
@@ -9,6 +11,7 @@ import { Card } from '@/components/Card';
 import { Logo } from '@/components/Logo';
 import { MenuUtente } from '@/components/MenuUtente';
 import { Schermata } from '@/components/Schermata';
+import { useAggiornamenti, useNovita } from '@/hooks/useAggiornamenti';
 import { useAuth } from '@/hooks/useAuth';
 import { useListe } from '@/hooks/useListe';
 import { leggiBozze } from '@/db/bozze';
@@ -17,6 +20,7 @@ import { dataRelativa, ora } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import type { Bozza } from '@/types/bozza';
 import type { Ispezione, StatoIspezione } from '@/types/database';
+import { REVISIONE } from '@/lib/versione';
 import { raggio, spazio, testo, useColori } from '@/theme';
 
 type Voce =
@@ -41,6 +45,8 @@ export default function Home() {
   const c = useColori();
   const router = useRouter();
   const { profilo } = useAuth();
+  const aggiornamento = useAggiornamenti();
+  const novita = useNovita();
   const { pdvPerId, daCache } = useListe();
 
   const [voci, setVoci] = useState<Voce[]>([]);
@@ -134,6 +140,8 @@ export default function Home() {
               style={stili.principale}
             />
 
+            <AvvisoAggiornamento stato={aggiornamento.stato} onAggiorna={aggiornamento.scarica} />
+
             {daCache ? (
               <BannerStato
                 stato={{
@@ -147,6 +155,11 @@ export default function Home() {
 
             <Text style={[testo.etichetta, { color: c.testoSecondario }]}>ULTIME ISPEZIONI</Text>
           </View>
+        }
+        ListFooterComponent={
+          <Text style={[testo.piccolo, stili.versione, { color: c.testoDisabilitato }]}>
+            versione {REVISIONE}
+          </Text>
         }
         ListEmptyComponent={
           aggiornando ? null : (
@@ -223,6 +236,7 @@ export default function Home() {
           );
         }}
       />
+      <AvvisoNovita voci={novita.voci} onChiudi={novita.chiudi} />
     </Schermata>
   );
 }
@@ -249,5 +263,6 @@ const stili = StyleSheet.create({
     borderColor: 'transparent',
   },
   centro: { flex: 1, gap: 2 },
+  versione: { textAlign: 'center', marginTop: spazio.xl },
   destra: { alignItems: 'flex-end', gap: spazio.xs },
 });
