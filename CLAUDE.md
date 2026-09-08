@@ -34,7 +34,6 @@ I punti in cui questo succede sono noti in anticipo:
 | Milestone 1, dopo il primo push | attivare il backup: quattro secret, fra cui la stringa Session pooler e la chiave `service_role` | guida Supabase, passo 11 |
 | Milestone 8, prima di scrivere la Edge Function | `supabase login`, `supabase link` e impostare i secret SMTP Aruba | guida Supabase, passo 12 |
 | Milestone 8 | fornire le email dei sette destinatari attività e l'indirizzo mittente | specifica, §14 |
-| Milestone 11 | account Expo, `eas login` e configurazione della build | guida progetto Expo, passo 7 |
 
 Quando arrivi a uno di questi punti, dillo esplicitamente e aspetta conferma che sia stato
 fatto prima di continuare.
@@ -79,6 +78,22 @@ errore          #C0392B
 
 Definisci questi valori una volta in `src/theme/` e riferisciti sempre a quelli.
 
+### `flex: 1` dentro un componente: il difetto che si ripete
+
+Un componente non sa se lo stanno mettendo in una riga o in una colonna, quindi **non deve
+darsi `flex: 1` da solo**. In riga è giusto, i campi si dividono la larghezza. In colonna fa
+dividere l'altezza di un contenitore che altezza propria non ne ha: il contenitore collassa a
+zero e i figli continuano a disegnarsi, accavallandosi.
+
+Sotto `SOGLIA_LARGA` (900) parecchie righe diventano colonne, e **un tablet in verticale è
+800 punti**: non è un caso di nicchia, è il dispositivo vero nell'orientamento che la
+specifica richiede. Il difetto è stato trovato in `Select`, `CampoData`, `SignaturePad` e
+nelle voci del riepilogo — cioè anche nella schermata delle firme, la peggiore in cui
+sbagliare.
+
+La dimensione la dichiara chi dispone i campi, con un prop `contenitore`. Quando si aggiunge
+una schermata con dei filtri o una griglia, va pensata **anche stretta**.
+
 **Il giallo non è mai colore di testo su fondo chiaro.** Solo riempimento con testo nero sopra,
 o marchio su fondo nero. Gli usi ammessi sono cinque, e non se ne aggiungono altri senza
 motivo: pulsante primario, indicatore di ispezione in corso, marchio, **testata delle
@@ -115,7 +130,7 @@ Componenti funzionali con hook. Tipi generati da Supabase in `src/types/`. Nessu
 
 ## Stato
 
-Aggiornato al 4 settembre 2026.
+Aggiornato all’8 settembre 2026.
 
 **Milestone 1 — setup.** Completata. Progetto Expo SDK 57 con TypeScript ed expo-router creato
 nella cartella; Supabase configurato con schema, policy RLS e dati di seed (47 punti vendita,
@@ -143,10 +158,10 @@ archiviato in `schede/{anno}/{mese}/{numero}_{codice}.pdf`. Le misure della pagi
 a `printToFileAsync`: expo-print ignora `@page size` e senza quelle produce US Letter al posto
 di A4.
 
-**Collaudo end-to-end.** Fatto sull'emulatore con la build di rilascio: due ispezioni concluse
-(n. 1 con attività rilevate, n. 2 con "Niente da rilevare"), firme caricate su Storage, PDF
-generati in A4 e verificati nel contenuto. Sono dati veri sul progetto Supabase: vanno
-eliminati quando non servono più.
+**Collaudo end-to-end.** Fatto piu' volte, prima sull'emulatore e poi sui dispositivi veri.
+I dati di prova sono stati eliminati e il progressivo delle ispezioni riazzerato con
+`alter sequence ispezioni_numero_seq restart with 1`: cancellare le righe non basta, il
+contatore e' una sequenza separata.
 
 **Milestone 8 — invio email.** Completata. `supabase/functions/invia-scheda` compone i
 destinatari secondo §8.1, scarica il PDF da Storage, spedisce via SMTP Aruba e registra
@@ -205,9 +220,61 @@ admin sia dal menu utente sia dal layout della rotta.
   caso riprodotto in collaudo togliendo la rete un secondo dopo «Concludi». Eliminando la
   bozza si tolgono anche le eventuali firme orfane su Storage.
 
-**Milestone 11 — build e OTA.** Non iniziata. `app.json` è già predisposto (package
-`it.carellidistribuzione.storescout`, icone, splash chiara e scura, `backgroundColor`), ma
-manca `eas.json` e la configurazione dell'account Expo.
+**Milestone 11 — build e OTA.** Completata. Progetto Expo `@carelli-distribuzione/storescout`,
+intestato a un'organizzazione e non a una persona: là dentro vive la chiave di firma, e un
+account personale irraggiungibile bloccherebbe per sempre gli aggiornamenti dell'app già
+installata. APK distribuito a mano dalla pagina della build, aggiornamenti del solo
+JavaScript via `eas update`.
+
+Quattro cose imparate a caro prezzo, tutte da non rifare:
+
+- **Il profilo di produzione forza `buildType: apk`.** Il valore predefinito di EAS per
+  Android è `.aab`, che serve al Play Store e **non si installa su un tablet**.
+- **`node` è fissato a 24.16.0 in `eas.json`.** EAS gira su Node 22 con npm 10, questo PC su
+  Node 24 con npm 11, e i due risolvono diversamente un conflitto vero fra dipendenze
+  indirette: `expo-modules-core` vuole `react-native-worklets` fino alla `^0.10`, mentre
+  `@expo/ui` e reanimated pretendono la `0.12`. npm 11 issa la 0.12 e la marca invalid, npm
+  10 pretende una copia annidata che nel lockfile non c'è, e `npm ci` — che EAS usa e che non
+  perdona — si rifiuta. Nessuna delle due librerie viene usata: reanimated è esclusa
+  dall'autolinking e l'app monta solo `Stack`.
+- **Le variabili `EXPO_PUBLIC_*` non stanno nel repository**: vivono sul progetto Expo
+  (`eas env:list --environment production`). Il server di build non legge il `.env` locale.
+- **`platforms: ["android"]` va dichiarato**, altrimenti `eas update` prova a compilare anche
+  il web e si ferma chiedendo `react-native-web`.
+
+### La chiave di firma
+
+Generata da EAS e custodita là. È l'unica cosa irreversibile del progetto: senza, nessuno può
+più pubblicare un aggiornamento che si installi sopra l'app già sui tablet — Android rifiuta
+un APK con firma diversa, e l'unica via sarebbe disinstallare, perdendo le bozze locali.
+
+Una copia scaricata sta in `@carelli-distribuzione__storescout.jks`, coperta da `*.jks` in
+`.gitignore`. **Il file da solo non basta**: servono anche password del keystore, alias e
+password della chiave, che si leggono con `eas credentials` e vanno conservate a parte.
+
+### Aggiornamenti: due numeri diversi, e non vanno confusi
+
+`version` in `app.json` (oggi `1.0.0`) determina la `runtimeVersion` con il criterio
+`appVersion`: è quel numero a far incontrare un aggiornamento con le installazioni esistenti.
+**Si alza solo quando si distribuisce un APK nuovo.** Alzarlo per una correzione al solo
+JavaScript taglierebbe fuori i tablet già in mano agli ispettori, che resterebbero a cercare
+aggiornamenti per una versione che nessuno pubblica più.
+
+`REVISIONE` in `src/lib/versione.ts` è il contenuto, si alza a ogni `eas update` e compare in
+fondo alla schermata iniziale. Accanto, `NOVITA` elenca che cosa è cambiato per revisione: il
+riepilogo compare una volta sola dopo l'aggiornamento, e mai a chi installa l'app per la prima
+volta.
+
+Con una versione vecchia **non si lavora**: lo sbarramento sta nella radice dell'app, scarica
+da sé e non ha via d'uscita. Scatta però solo se l'aggiornamento è stato trovato davvero, cioè
+se la rete c'era: bloccare un ispettore appena entrato in un magazzino senza campo sarebbe il
+modo peggiore di applicare la regola.
+
+Il canale è **scritto dentro l'APK** al momento della compilazione: quell'APK cercherà
+aggiornamenti sul canale `production` per sempre, e non è modificabile dopo.
+
+Solo JavaScript e immagini viaggiano via rete. Una libreria nuova, un permesso, un cambio di
+SDK richiedono un APK nuovo e il giro a mano su ogni tablet.
 
 ### Il formato dell'export
 
@@ -311,6 +378,16 @@ Vale anche il principio che ne è emerso: di ogni rimando ci deve essere **un so
 responsabile**. La guardia del layout radice decide per chi non è autenticato; il layout
 admin interviene solo su chi è autenticato ma non è amministratore. Due componenti che
 rimandano insieme si rincorrono.
+
+### Collaudo: l'emulatore non c'è più
+
+Da settembre le prove le fa l'utente sui dispositivi veri — un telefono e un tablet — e le
+correzioni arrivano come aggiornamenti via rete. Chi lavora al progetto scrive e rilegge, ma
+**non dichiari fatto ciò che non ha visto funzionare**: lo dica, invece.
+
+L'emulatore `StoreScout_Tablet` esiste ancora e le istruzioni sono in fondo al `README.md`.
+Se torna in uso, la prima cosa da rifare è un giro di tutte le schermate a larghezza ridotta:
+era il lato non collaudato, e ha nascosto difetti per mesi.
 
 ### Collaudo prima del rilascio
 
