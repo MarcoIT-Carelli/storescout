@@ -326,10 +326,36 @@ e un `undefined` al posto di `null` fa fallire la conclusione di una scheda già
   successiva su quel punto vendita: «al prossimo ordine» si verifica quando si rientra in
   quel negozio, non a una data che nessuno ha fissato.
 
-Resta da fare: le foto sulle attività — che richiedono un APK nuovo, non un `eas update`, perché portano un modulo
+- *Foto sulle attività* (versione `1.1.0`): `06_foto_attivita.sql`, bucket `foto` da creare
+  a mano, e le librerie `expo-image-picker` ed `expo-image-manipulator`.
+
+  **Questo gruppo è l'unico che non viaggia via `eas update`**: porta due moduli nativi e
+  il permesso `CAMERA`, quindi richiede un APK nuovo. Per questo `version` in `app.json`
+  è salita a `1.1.0`: con il criterio `appVersion` è quel numero a fare da `runtimeVersion`,
+  e lasciarlo fermo servirebbe aggiornamenti JavaScript che chiamano un modulo nativo
+  assente a installazioni che non ce l'hanno — cioè un crash all'apertura della fotocamera.
+
+  La foto viene ridotta a 1600 px di lato lungo **sul dispositivo, prima di essere
+  salvata**: il vincolo non è lo spazio su Storage ma il peso massimo di un messaggio di
+  posta, e dodici megapixel appena usciti dalla fotocamera sono tre megabyte l'uno. Ridotta
+  pesa circa 400 KB e mostra comunque uno scaffale o una scadenza sull'etichetta. Il tetto
+  di 15 MB per scheda resta come rete di sicurezza — Aruba accetta 25 MB, ma il base64
+  aggiunge un terzo — e con questi numeri non dovrebbe scattare quasi mai.
+
+  Il controllo sta in due punti e non è una ripetizione inutile: `validaBozza` blocca la
+  conclusione con le foto ancora togliibili, mentre la Edge Function si difende da sola
+  perché una scheda vecchia rispedita a mano non passa da quella validazione. Là il
+  comportamento è diverso: allega finché sta nel limite e scrive nel corpo quante foto ha
+  lasciato fuori, perché un documento firmato deve arrivare comunque e chi lo riceve deve
+  sapere che cosa manca.
+
+  `ispezione_foto` tiene anche il peso in byte. Chiederlo allo Storage foto per foto al
+  momento dell'invio vorrebbe dire scoprire il problema quando è troppo tardi.
+
+Resta da fare: nulla dei gruppi richiesti. Prima del rilascio — che richiedono un APK nuovo, non un `eas update`, perché portano un modulo
 nativo e il permesso `CAMERA`. Il rilascio è previsto per la settimana del 15 settembre
-2026, e le foto devono entrare in quell'APK: distribuirlo a mano su ogni tablet è un giro
-che conviene fare una volta sola.
+2026, e le foto entrano in quell'APK: distribuirlo a mano su ogni tablet è un giro che
+conviene fare una volta sola.
 
 ### La chiave di firma
 

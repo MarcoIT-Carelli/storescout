@@ -1,5 +1,6 @@
 import * as Crypto from 'expo-crypto';
 
+import type { FotoLocale } from '@/lib/foto';
 import { dataISO } from '@/lib/format';
 
 /**
@@ -21,6 +22,8 @@ export type RigaAttivita = {
   scadenza_data: string | null;
   scadenza_testo: string;
   scadenza_note: string;
+  /** Scatti della rilevazione, ancora sul dispositivo finché la scheda non si conclude. */
+  foto: FotoLocale[];
 };
 
 export type RigaSvolta = {
@@ -66,6 +69,7 @@ export function rigaAttivitaVuota(): RigaAttivita {
     scadenza_data: null,
     scadenza_testo: '',
     scadenza_note: '',
+    foto: [],
   };
 }
 
@@ -109,6 +113,7 @@ export function normalizzaBozza(grezza: Partial<Bozza>): Bozza {
     ...(grezza as Bozza),
     voto: grezza.voto ?? null,
     rotture_stock_promo: grezza.rotture_stock_promo ?? null,
+    attivita: (grezza.attivita ?? []).map((r) => ({ ...r, foto: r.foto ?? [] })),
   };
 }
 
@@ -121,6 +126,7 @@ export function rigaCompilata(r: RigaAttivita): boolean {
       r.note.trim() ||
       r.scadenza_data ||
       r.scadenza_testo.trim() ||
-      r.scadenza_note.trim(),
+      r.scadenza_note.trim() ||
+      r.foto.length > 0,
   );
 }

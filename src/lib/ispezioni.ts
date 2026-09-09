@@ -7,6 +7,7 @@ import { rigaCompilata } from '@/types/bozza';
 import type { Destinatario, Ispezione, Pdv, Profilo, VoceLista } from '@/types/database';
 
 import { messaggioDaFunzione } from './errori';
+import { caricaFoto, LIMITE_ALLEGATI_BYTE, pesoLeggibile } from './foto';
 import { dataBreve, daDataISO } from './format';
 import { supabase } from './supabase';
 
@@ -16,7 +17,7 @@ import { supabase } from './supabase';
  * e la bozza locale non viene mai eliminata prima della conferma di salvataggio remoto.
  */
 
-export type Fase = 'salvataggio' | 'righe' | 'firme' | 'pdf' | 'invio' | 'completato';
+export type Fase = 'salvataggio' | 'righe' | 'foto' | 'firme' | 'pdf' | 'invio' | 'completato';
 
 export type EsitoInvio = { inviata: boolean; messaggio: string };
 
@@ -130,6 +131,7 @@ export function righePdf(bozza: Bozza, rif: Riferimenti): RigaPdf[] {
     tipoIntervento: nomeDi(rif.tipiIntervento, r.tipo_intervento_id),
     note: r.note.trim(),
     scadenza: testoScadenza(r),
+    foto: r.foto.length,
   }));
 }
 
@@ -152,6 +154,22 @@ export async function concludiIspezione(
 
   onAvanzamento({ fase: 'righe', messaggio: 'Salvataggio delle attività…' });
   await salvaRighe(bozza);
+
+  const righeConFoto = bozza.niente_da_rilevare
+    ? []
+    : bozza.attivita.filter(rigaCompilata).filter((r) => r.foto.length > 0);
+
+  if (righeConFoto.length > 0) {
+    const quante = righeConFoto.reduce((n, r) => n + r.foto.length, 0);
+    onAvanzamento({
+      fase: 'foto',
+      messaggio: quante === 1 ? 'Caricamento della foto…' : `Caricamento di ${quante} foto…`,
+    });
+    await caricaFoto(
+      bozza.id,
+      righeConFoto.map((r) => ({ attivitaId: r.id, foto: r.foto })),
+    );
+  }
 
   onAvanzamento({ fase: 'firme', messaggio: 'Caricamento delle firme…' });
   let firmaIspettorePath: string | null = null;
@@ -296,6 +314,7 @@ export async function urlPdf(percorso: string): Promise<string> {
 
 /** Riga attività così come torna dal database, con i nomi delle liste già risolti. */
 export type AttivitaLetta = {
+  id: string;
   ordine: number;
   note: string | null;
   scadenza_data: string | null;
@@ -306,10 +325,13 @@ export type AttivitaLetta = {
   tipi_intervento: { nome: string } | null;
 };
 
+export type FotoArchiviata = { attivita_id: string; ordine: number; path: string };
+
 export type Dettaglio = {
   ispezione: Ispezione;
   attivita: AttivitaLetta[];
   svolte: { ordine: number; descrizione: string }[];
+  foto: FotoArchiviata[];
 };
 
 /**
@@ -318,12 +340,12 @@ export type Dettaglio = {
  * scheda storica deve restare leggibile com'era.
  */
 export async function caricaDettaglio(id: string): Promise<Dettaglio> {
-  const [testata, attivita, svolte] = await Promise.all([
+  const [testata, attivita, svolte, foto] = await Promise.all([
     supabase.from('ispezioni').select('*').eq('id', id).single(),
     supabase
       .from('ispezione_attivita')
       .select(
-        'ordine, note, scadenza_data, scadenza_testo, scadenza_note, destinatari(nome), reparti(nome), tipi_intervento(nome)',
+        'id, ordine, note, scadenza_data, scadenza_testo, scadenza_note, destinatari(nome), reparti(nome), tipi_intervento(nome)',
       )
       .eq('ispezione_id', id)
       .order('ordine'),
@@ -332,15 +354,22 @@ export async function caricaDettaglio(id: string): Promise<Dettaglio> {
       .select('ordine, descrizione')
       .eq('ispezione_id', id)
       .order('ordine'),
+    supabase
+      .from('ispezione_foto')
+      .select('attivita_id, ordine, path')
+      .eq('ispezione_id', id)
+      .order('ordine'),
   ]);
 
   if (testata.error) throw testata.error;
   if (attivita.error) throw attivita.error;
   if (svolte.error) throw svolte.error;
+  if (foto.error) throw foto.error;
 
   return {
     ispezione: testata.data as Ispezione,
     attivita: (attivita.data ?? []) as unknown as AttivitaLetta[],
     svolte: (svolte.data ?? []) as { ordine: number; descrizione: string }[],
+    foto: (foto.data ?? []) as FotoArchiviata[],
   };
 }

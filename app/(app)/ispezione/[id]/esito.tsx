@@ -2,7 +2,9 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Linking,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -21,6 +23,7 @@ import { useListe } from '@/hooks/useListe';
 import { messaggioErrore } from '@/lib/errori';
 import { dataBreve, daDataISO, durata, ora } from '@/lib/format';
 import { caricaDettaglio, inviaScheda, urlPdf, type Dettaglio } from '@/lib/ispezioni';
+import { urlFoto } from '@/lib/foto';
 import { chiudiVerifica } from '@/lib/verifiche';
 import type { StatoIspezione } from '@/types/database';
 import { raggio, SOGLIA_LARGA, spazio, testo, useColori } from '@/theme';
@@ -149,7 +152,7 @@ export default function Esito() {
     );
   }
 
-  const { ispezione: i, attivita, svolte } = dettaglio;
+  const { ispezione: i, attivita, svolte, foto } = dettaglio;
   const pdv = pdvPerId(i.pdv_id);
   const aspetto = ASPETTO[i.stato];
   const ingresso = new Date(i.ora_ingresso);
@@ -236,7 +239,7 @@ export default function Esito() {
             </Card>
           ) : (
             attivita.map((a) => (
-              <Card key={a.ordine}>
+              <Card key={a.id}>
                 <View style={[stili.tendine, stretto && { flexDirection: 'column' }]}>
                   <Voce contenitore={stretto ? undefined : { flex: 1, minWidth: 140 }} etichetta="Destinatario" valore={a.destinatari?.nome ?? '—'} compatta />
                   <Voce contenitore={stretto ? undefined : { flex: 1, minWidth: 140 }} etichetta="Reparto" valore={a.reparti?.nome ?? '—'} compatta />
@@ -250,6 +253,7 @@ export default function Esito() {
                   {a.scadenza_data ? dataBreve(daDataISO(a.scadenza_data)) : a.scadenza_testo ?? '—'}
                   {a.scadenza_note ? ` (${a.scadenza_note})` : ''}
                 </Text>
+                <FotoDellaRiga percorsi={foto.filter((f) => f.attivita_id === a.id)} />
               </Card>
             ))
           )}
@@ -293,6 +297,57 @@ export default function Esito() {
   );
 }
 
+/**
+ * Le foto di una rilevazione, in miniatura.
+ *
+ * Lo Storage è privato, quindi ogni miniatura ha bisogno di un link firmato che dura
+ * pochi minuti: si chiedono all'apertura della scheda e si aprono a schermo intero nel
+ * browser di sistema, che sa già ingrandire e ruotare.
+ */
+function FotoDellaRiga({ percorsi }: { percorsi: { path: string; ordine: number }[] }) {
+  const c = useColori();
+  const [url, setUrl] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let vivo = true;
+    Promise.all(
+      percorsi.map(async (f) => [f.path, await urlFoto(f.path)] as const),
+    )
+      .then((coppie) => vivo && setUrl(Object.fromEntries(coppie)))
+      .catch(() => {
+        // Una miniatura che non si carica non deve rovinare la lettura della scheda.
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [percorsi]);
+
+  if (percorsi.length === 0) return null;
+
+  return (
+    <View style={stili.foto}>
+      {percorsi.map((f) => (
+        <Pressable
+          key={f.path}
+          onPress={() => url[f.path] && Linking.openURL(url[f.path])}
+          accessibilityRole="button"
+          accessibilityLabel={`Apri la foto ${f.ordine + 1}`}
+          style={({ pressed }) => [
+            stili.miniatura,
+            { borderColor: c.bordo, opacity: pressed ? 0.7 : 1 },
+          ]}
+        >
+          {url[f.path] ? (
+            <Image source={{ uri: url[f.path] }} style={stili.immagine} resizeMode="cover" />
+          ) : (
+            <ActivityIndicator color={c.testoSecondario} />
+          )}
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
 function Voce({
   etichetta,
   valore,
@@ -329,6 +384,17 @@ const stili = StyleSheet.create({
   voce: { flexDirection: 'row', alignItems: 'flex-start', gap: spazio.md, paddingVertical: 4 },
   tendine: { flexDirection: 'row', gap: spazio.lg },
   rigaSvolta: { flexDirection: 'row', alignItems: 'flex-start', gap: spazio.sm, paddingVertical: 3 },
+  foto: { flexDirection: 'row', flexWrap: 'wrap', gap: spazio.sm, marginTop: spazio.md },
+  miniatura: {
+    width: 88,
+    height: 88,
+    borderRadius: raggio.md,
+    borderWidth: 1,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  immagine: { width: '100%', height: '100%' },
   niente: {
     borderWidth: 1,
     borderRadius: raggio.md,

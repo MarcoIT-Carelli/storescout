@@ -59,6 +59,18 @@ function daDataISO(s: string): Date {
 
 type RigaAttivita = { destinatari: { nome: string; email: string | null } | null };
 
+/**
+ * Tetto agli allegati del messaggio, PDF e foto insieme.
+ *
+ * Aruba accetta fino a 25 MB, ma la codifica base64 aggiunge circa un terzo: quindici
+ * megabyte di file diventano una ventina di messaggio. L'app blocca già la conclusione
+ * oltre questa soglia; qui il controllo si ripete perché una scheda vecchia rispedita a
+ * mano non passa da quella validazione.
+ */
+const LIMITE_ALLEGATI_BYTE = 15 * 1024 * 1024;
+
+type FotoArchiviata = { path: string; byte: number; ordine: number };
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return risposta({ errore: 'Metodo non consentito.' }, 405);
@@ -157,6 +169,16 @@ Deno.serve(async (req) => {
     '— Messaggio generato automaticamente da StoreScout.',
   ].join('\n');
 
+  // Le foto delle rilevazioni viaggiano con la scheda: sono la prova di quello che
+  // la riga descrive a parole.
+  const { data: fotoRighe } = await servizio
+    .from('ispezione_foto')
+    .select('path, byte, ordine')
+    .eq('ispezione_id', ispezioneId)
+    .order('ordine');
+
+  const foto = (fotoRighe ?? []) as FotoArchiviata[];
+
   const tentativoPrecedente = await servizio
     .from('invii_email')
     .select('tentativi')
@@ -190,7 +212,58 @@ Deno.serve(async (req) => {
 
     // Codifica di libreria e non concatenazione carattere per carattere: su un PDF da
     // un centinaio di KB quest'ultima esaurisce le risorse della Edge Function.
-    const allegato = encodeBase64(new Uint8Array(await pdf.arrayBuffer()));
+    const bytesPdf = new Uint8Array(await pdf.arrayBuffer());
+    const allegato = encodeBase64(bytesPdf);
+
+    /**
+     * Si allega finché si sta dentro il limite, e ciò che resta fuori viene detto nel
+     * corpo del messaggio. Una scheda che non parte per il peso di una foto sarebbe il
+     * modo peggiore di gestire il problema: il documento firmato deve arrivare comunque,
+     * e chi lo riceve deve sapere che cosa manca.
+     */
+    let pesoAllegati = bytesPdf.byteLength;
+    const allegatiFoto: { filename: string; content: string; encoding: 'base64'; contentType: string }[] = [];
+    let omesse = 0;
+
+    for (const [indice, f] of foto.entries()) {
+      if (pesoAllegati + f.byte > LIMITE_ALLEGATI_BYTE) {
+        omesse++;
+        continue;
+      }
+      const { data: immagine, error: erroreFoto } = await servizio.storage
+        .from('foto')
+        .download(f.path);
+      if (erroreFoto || !immagine) {
+        omesse++;
+        continue;
+      }
+      const bytesFoto = new Uint8Array(await immagine.arrayBuffer());
+      pesoAllegati += bytesFoto.byteLength;
+      allegatiFoto.push({
+        filename: `Foto_${ispezione.numero}_${indice + 1}.jpg`,
+        content: encodeBase64(bytesFoto),
+        encoding: 'base64',
+        contentType: 'image/jpeg',
+      });
+    }
+
+    // Stesso stile del corpo qui sopra: le righe si compongono e si uniscono, cosi'
+    // un a capo resta visibile come tale anche a chi rileggera' fra sei mesi.
+    const coda: string[] = [];
+    if (omesse > 0) {
+      coda.push(
+        '',
+        `Nota: ${omesse} ${omesse === 1 ? 'foto non è stata allegata' : 'foto non sono state allegate'} per non superare il limite di dimensione del messaggio.`,
+      );
+    } else if (allegatiFoto.length > 0) {
+      coda.push(
+        '',
+        allegatiFoto.length === 1
+          ? 'In allegato anche 1 foto della rilevazione.'
+          : `In allegato anche ${allegatiFoto.length} foto delle rilevazioni.`,
+      );
+    }
+    const corpoCompleto = [corpo, ...coda].join('\n');
 
     const client = new SMTPClient({
       connection: {
@@ -206,20 +279,29 @@ Deno.serve(async (req) => {
       to: destinatariA,
       cc,
       subject: oggetto,
-      content: corpo,
+      content: corpoCompleto,
       attachments: [
         {
           filename: `Scheda_${ispezione.numero}_${pdv.codice}_${ispezione.data_ispezione}.pdf`,
           content: allegato,
-          encoding: 'base64',
+          encoding: 'base64' as const,
           contentType: 'application/pdf',
         },
+        ...allegatiFoto,
       ],
     });
     await client.close();
 
     await registra('inviata', null);
-    return risposta({ esito: 'inviata', a: destinatariA, cc, oggetto, tentativi });
+    return risposta({
+      esito: 'inviata',
+      a: destinatariA,
+      cc,
+      oggetto,
+      tentativi,
+      foto: allegatiFoto.length,
+      fotoOmesse: omesse,
+    });
   } catch (e) {
     const messaggio = e instanceof Error ? e.message : String(e);
     await registra('errore', messaggio);

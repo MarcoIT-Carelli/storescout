@@ -349,7 +349,7 @@ Blocco principale della scheda. È una tabella a righe dinamiche.
 1. **Destinatario attività** — dropdown da tabella `destinatari`
 2. **Reparto** — dropdown da tabella `reparti`
 3. **Tipo di intervento** — dropdown da tabella `tipi_intervento`
-4. **Note** — testo libero multilinea
+4. **Note** — testo libero multilinea, con fino a tre **foto** della rilevazione (2026)
 5. **Scadenza attività** — vedi sotto
 
 **Campo scadenza** — tre modalità in un unico controllo:
@@ -613,7 +613,8 @@ modo più affidabile per scoprire tardi problemi di layout e di prestazioni.
 ## 15. Fuori perimetro (v1)
 
 Non implementare in questa versione, per non allungare i tempi del primo rilascio:
-- allegati fotografici alle attività
+- ~~allegati fotografici alle attività~~ — **realizzati nel 2026**: fino a tre foto per
+  attività, ridotte sul dispositivo e allegate alla mail insieme al PDF
 - notifiche push (gli avvisi introdotti nel 2026 sono in-app: compaiono ad app aperta e non
   richiedono alcun servizio di notifica)
 - dashboard analitica delle attività per destinatario

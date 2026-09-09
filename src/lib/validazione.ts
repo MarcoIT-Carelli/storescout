@@ -1,3 +1,4 @@
+import { LIMITE_ALLEGATI_BYTE, pesoLeggibile } from '@/lib/foto';
 import type { Bozza } from '@/types/bozza';
 import { rigaCompilata } from '@/types/bozza';
 
@@ -66,6 +67,22 @@ export function validaBozza(bozza: Bozza): Problema[] {
 
   if (bozza.firma_responsabile_uri && !bozza.nome_responsabile.trim()) {
     problemi.push({ dove: 'firme', messaggio: 'Manca il nome del responsabile che ha firmato.' });
+  }
+
+  /**
+   * Le foto viaggiano allegate alla mail, e una casella di posta ha un tetto. Meglio
+   * dirlo qui, con la scheda ancora aperta e le foto ancora togliibili, che lasciar
+   * partire un messaggio che il server rifiuta a firme già raccolte.
+   */
+  const pesoFoto = righe.reduce(
+    (somma, r) => somma + r.foto.reduce((s, f) => s + f.byte, 0),
+    0,
+  );
+  if (pesoFoto > LIMITE_ALLEGATI_BYTE) {
+    problemi.push({
+      dove: 'scheda',
+      messaggio: `Le foto pesano ${pesoLeggibile(pesoFoto)}, troppo per una email (limite ${pesoLeggibile(LIMITE_ALLEGATI_BYTE)}). Eliminane qualcuna prima di concludere.`,
+    });
   }
 
   if (bozza.voto === null) {

@@ -8,6 +8,7 @@ import type { Destinatario, VoceLista } from '@/types/database';
 import { raggio, spazio, testo, TOCCO_MIN, useColori } from '@/theme';
 
 import { ConfermaInLinea } from './ConfermaInLinea';
+import { FotoAttivita } from './FotoAttivita';
 import { Select } from './Select';
 import { TextField } from './TextField';
 
@@ -114,6 +115,12 @@ export function SchedaAttivita({
           disabilitato={disabilitato}
         />
       </View>
+
+      <FotoAttivita
+        foto={riga.foto}
+        onChange={(foto) => cambia({ foto })}
+        disabilitato={disabilitato}
+      />
 
       <TextField
         etichetta="Note"

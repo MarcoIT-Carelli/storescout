@@ -65,6 +65,13 @@ export async function leggiIspezioni(f: Filtri): Promise<Ispezione[]> {
  * al prossimo aggiornamento.
  */
 export async function eliminaBozza(id: string): Promise<boolean> {
+  // I percorsi si leggono prima: dopo il delete le righe non ci sono più e i file
+  // resterebbero su Storage senza nessuno che sappia di loro.
+  const { data: foto } = await supabase
+    .from('ispezione_foto')
+    .select('path')
+    .eq('ispezione_id', id);
+
   const { data, error } = await supabase
     .from('ispezioni')
     .delete()
@@ -81,6 +88,8 @@ export async function eliminaBozza(id: string): Promise<boolean> {
   // risalirci: si puliscono qui, senza far fallire l'eliminazione se non ci sono.
   try {
     await supabase.storage.from('firme').remove([`${id}/ispettore.png`, `${id}/responsabile.png`]);
+    const percorsi = ((foto ?? []) as { path: string }[]).map((f) => f.path);
+    if (percorsi.length > 0) await supabase.storage.from('foto').remove(percorsi);
   } catch {
     // best effort
   }

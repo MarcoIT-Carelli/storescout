@@ -15,6 +15,8 @@ export type RigaPdf = {
   tipoIntervento: string;
   note: string;
   scadenza: string;
+  /** Le foto viaggiano allegate alla mail, non dentro il PDF: qui se ne dà conto. */
+  foto: number;
 };
 
 export type DatiScheda = {
@@ -97,7 +99,7 @@ export function htmlScheda(d: DatiScheda): string {
               <td>${esc(r.destinatario)}</td>
               <td>${esc(r.reparto)}</td>
               <td>${esc(r.tipoIntervento)}</td>
-              <td class="note">${esc(r.note)}</td>
+              <td class="note">${esc(r.note)}${r.foto > 0 ? `<span class="conFoto">${r.foto === 1 ? '1 foto allegata' : `${r.foto} foto allegate`}</span>` : ''}</td>
               <td>${esc(r.scadenza)}</td>
             </tr>`,
           )
@@ -158,6 +160,9 @@ export function htmlScheda(d: DatiScheda): string {
   .attivita { margin-top: 6px; }
   .attivita tbody td { font-size: 9.5pt; }
   .note { white-space: pre-wrap; }
+  .conFoto {
+    display: block; margin-top: 4px; font-size: 8pt; color: #6B6B66; font-style: italic;
+  }
   tr { page-break-inside: avoid; }
 
   .niente {
