@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { eliminaBozza, leggiBozza, salvaBozza } from '@/db/bozze';
+import { dimenticaFoto } from '@/lib/foto';
 import type { Bozza } from '@/types/bozza';
 
 /** Ritardo prima di scrivere su SQLite: evita una scrittura per ogni carattere digitato. */
@@ -84,10 +85,14 @@ export function useBozza(id: string | undefined): Stato {
 
   const scarta = useCallback(async () => {
     if (attesa.current) clearTimeout(attesa.current);
+    // Le foto vivono in una cartella che il sistema non ripulisce da sé: senza questo
+    // resterebbero sul tablet per sempre, una scheda dopo l'altra.
+    const daPulire = inSospeso.current ?? bozza;
     inSospeso.current = null;
+    if (daPulire) dimenticaFoto(daPulire.attivita.flatMap((r) => r.foto));
     if (id) await eliminaBozza(id);
     setBozza(null);
-  }, [id]);
+  }, [id, bozza]);
 
   // Una modifica ancora in attesa non deve perdersi quando la schermata viene chiusa.
   useEffect(

@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -22,7 +22,13 @@ import { GIUDIZIO, type Voto } from '@/components/SelettoreVoto';
 import { useListe } from '@/hooks/useListe';
 import { messaggioErrore } from '@/lib/errori';
 import { dataBreve, daDataISO, durata, ora } from '@/lib/format';
-import { caricaDettaglio, inviaScheda, urlPdf, type Dettaglio } from '@/lib/ispezioni';
+import {
+  caricaDettaglio,
+  inviaScheda,
+  urlPdf,
+  type Dettaglio,
+  type FotoArchiviata,
+} from '@/lib/ispezioni';
 import { urlFoto } from '@/lib/foto';
 import { chiudiVerifica } from '@/lib/verifiche';
 import type { StatoIspezione } from '@/types/database';
@@ -253,7 +259,7 @@ export default function Esito() {
                   {a.scadenza_data ? dataBreve(daDataISO(a.scadenza_data)) : a.scadenza_testo ?? '—'}
                   {a.scadenza_note ? ` (${a.scadenza_note})` : ''}
                 </Text>
-                <FotoDellaRiga percorsi={foto.filter((f) => f.attivita_id === a.id)} />
+                <FotoDellaRiga tutte={foto} attivitaId={a.id} />
               </Card>
             ))
           )}
@@ -304,9 +310,18 @@ export default function Esito() {
  * pochi minuti: si chiedono all'apertura della scheda e si aprono a schermo intero nel
  * browser di sistema, che sa già ingrandire e ruotare.
  */
-function FotoDellaRiga({ percorsi }: { percorsi: { path: string; ordine: number }[] }) {
+function FotoDellaRiga({ tutte, attivitaId }: { tutte: FotoArchiviata[]; attivitaId: string }) {
   const c = useColori();
   const [url, setUrl] = useState<Record<string, string>>({});
+
+  // Il filtro sta qui dentro e passa da useMemo: calcolato nel corpo del genitore
+  // produrrebbe un array nuovo a ogni render, e l'effetto qui sotto — che ha proprio
+  // quell'array fra le dipendenze — ripartirebbe all'infinito, chiedendo link firmati
+  // senza mai fermarsi.
+  const percorsi = useMemo(
+    () => tutte.filter((f) => f.attivita_id === attivitaId),
+    [tutte, attivitaId],
+  );
 
   useEffect(() => {
     let vivo = true;

@@ -1,4 +1,4 @@
-import { File } from 'expo-file-system';
+import { Directory, File, Paths } from 'expo-file-system';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -43,6 +43,23 @@ export type FotoLocale = {
   byte: number;
 };
 
+/**
+ * Dove vivono le foto in attesa che la scheda si concluda.
+ *
+ * `Paths.cache` è documentato come cancellabile dal sistema quando lo spazio scarseggia,
+ * ed è lì che `saveAsync` scrive. Una bozza però può restare aperta per giorni — la si
+ * comincia in un negozio e la si chiude al successivo — e ritrovare la scheda senza le
+ * foto scattate sarebbe una perdita di dati silenziosa, di quelle che ci si accorge
+ * troppo tardi.
+ */
+const CARTELLA_FOTO = 'foto-in-corso';
+
+function cartellaPersistente(): Directory {
+  const cartella = new Directory(Paths.document, CARTELLA_FOTO);
+  if (!cartella.exists) cartella.create({ intermediates: true });
+  return cartella;
+}
+
 export const pesoLeggibile = (byte: number) =>
   byte >= 1024 * 1024 ? `${(byte / 1024 / 1024).toFixed(1)} MB` : `${Math.round(byte / 1024)} KB`;
 
@@ -77,8 +94,11 @@ export async function scattaFoto(): Promise<FotoLocale | null> {
   const ridotta = await contesto.renderAsync();
   const salvata = await ridotta.saveAsync({ compress: QUALITA, format: SaveFormat.JPEG });
 
-  const file = new File(salvata.uri);
-  return { id: salvata.uri, uri: salvata.uri, byte: file.size ?? 0 };
+  // Fuori dalla cache prima di restituirla, altrimenti la foto vive quanto decide Android.
+  const definitiva = new File(cartellaPersistente(), `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`);
+  await new File(salvata.uri).move(definitiva);
+
+  return { id: definitiva.uri, uri: definitiva.uri, byte: definitiva.size ?? 0 };
 }
 
 /** Peso complessivo delle foto di una scheda. */
@@ -94,6 +114,13 @@ export async function caricaFoto(
   ispezioneId: string,
   perAttivita: { attivitaId: string; foto: FotoLocale[] }[],
 ): Promise<void> {
+  // I percorsi già presenti servono dopo: se un'attività passa da tre foto a una, i due
+  // file in eccesso resterebbero su Storage senza nessuna riga che li nomini.
+  const { data: precedenti } = await supabase
+    .from('ispezione_foto')
+    .select('path')
+    .eq('ispezione_id', ispezioneId);
+
   const cancella = await supabase.from('ispezione_foto').delete().eq('ispezione_id', ispezioneId);
   if (cancella.error) throw cancella.error;
 
@@ -123,6 +150,38 @@ export async function caricaFoto(
   if (righe.length > 0) {
     const { error } = await supabase.from('ispezione_foto').insert(righe);
     if (error) throw error;
+  }
+
+  const validi = new Set(righe.map((r) => r.path));
+  const superati = ((precedenti ?? []) as { path: string }[])
+    .map((r) => r.path)
+    .filter((percorso) => !validi.has(percorso));
+
+  // Dopo l'insert e non prima: se il caricamento fallisce a metà, le foto vecchie sono
+  // ancora l'unica copia rimasta sul server.
+  if (superati.length > 0) {
+    try {
+      await supabase.storage.from('foto').remove(superati);
+    } catch {
+      // best effort: una foto orfana pesa, ma non rompe niente
+    }
+  }
+}
+
+/**
+ * Toglie dal dispositivo le foto di una scheda ormai conclusa o scartata.
+ *
+ * Non solleva mai: sono file di appoggio, e non riuscire a cancellarli non deve
+ * impedire di concludere un'ispezione o di eliminare una bozza.
+ */
+export function dimenticaFoto(foto: FotoLocale[]): void {
+  for (const f of foto) {
+    try {
+      const file = new File(f.uri);
+      if (file.exists) file.delete();
+    } catch {
+      // best effort
+    }
   }
 }
 

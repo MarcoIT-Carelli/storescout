@@ -46,7 +46,12 @@ type Stato = {
 const Contesto = createContext<Stato | null>(null);
 
 export function ListeProvider({ children, attivo }: { children: ReactNode; attivo: boolean }) {
+  // Id e ruolo invece dell'oggetto: `profilo` è ricostruito a ogni evento di
+  // autenticazione, refresh del token compreso, e usarlo come dipendenza farebbe
+  // riscaricare tutte le liste una volta all'ora senza che nulla sia cambiato.
   const { profilo } = useAuth();
+  const ispettoreId = profilo?.id;
+  const ruolo = profilo?.ruolo;
   const [liste, setListe] = useState<Liste>(VUOTE);
   const [caricamento, setCaricamento] = useState(true);
   const [daCache, setDaCache] = useState(false);
@@ -60,8 +65,8 @@ export function ListeProvider({ children, attivo }: { children: ReactNode; attiv
         supabase.from('destinatari').select('*').eq('attivo', true).order('ordine'),
         supabase.from('reparti').select('*').eq('attivo', true).order('ordine'),
         supabase.from('tipi_intervento').select('*').eq('attivo', true).order('ordine'),
-        profilo
-          ? supabase.from('ispettore_pdv').select('pdv_id').eq('ispettore_id', profilo.id)
+        ispettoreId
+          ? supabase.from('ispettore_pdv').select('pdv_id').eq('ispettore_id', ispettoreId)
           : Promise.resolve({ data: [], error: null }),
       ]);
 
@@ -91,7 +96,7 @@ export function ListeProvider({ children, attivo }: { children: ReactNode; attiv
     } finally {
       setCaricamento(false);
     }
-  }, [profilo]);
+  }, [ispettoreId]);
 
   useEffect(() => {
     if (!attivo) {
@@ -111,10 +116,10 @@ export function ListeProvider({ children, attivo }: { children: ReactNode; attiv
   // L'amministratore non ha assegnazioni e non gli servono: il pannello deve poter
   // aprire una scheda ovunque, ed è lui a decidere chi vede che cosa.
   const pdvSelezionabili = useMemo(() => {
-    if (profilo?.ruolo === 'admin') return liste.pdv;
+    if (ruolo === 'admin') return liste.pdv;
     const suoi = new Set(liste.assegnati);
     return liste.pdv.filter((p) => suoi.has(p.id));
-  }, [liste, profilo]);
+  }, [liste, ruolo]);
 
   const valore = useMemo<Stato>(
     () => ({ liste, caricamento, daCache, errore, aggiorna, pdvPerId, pdvSelezionabili }),
