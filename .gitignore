@@ -46,3 +46,6 @@ yarn-error.*
 StoreScout-collaudo.apk
 *.apk
 supabase/.temp/
+
+# Log di lavoro locali (build nativa, Metro)
+*.log
