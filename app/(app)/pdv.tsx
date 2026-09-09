@@ -21,7 +21,7 @@ export default function SelezionePdv() {
   const c = useColori();
   const router = useRouter();
   const { profilo } = useAuth();
-  const { liste, caricamento, daCache } = useListe();
+  const { liste, caricamento, daCache, pdvSelezionabili } = useListe();
 
   const [ricerca, setRicerca] = useState('');
   const [insegna, setInsegna] = useState<string | null>(null);
@@ -40,7 +40,7 @@ export default function SelezionePdv() {
       p.citta.toLowerCase().includes(q) ||
       p.indirizzo.toLowerCase().includes(q);
 
-    const filtrati = liste.pdv.filter(
+    const filtrati = pdvSelezionabili.filter(
       (p) => corrisponde(p) && (!insegna || p.ragione_sociale === insegna),
     );
 
@@ -50,7 +50,7 @@ export default function SelezionePdv() {
     // ripeterli in cima confonde invece di aiutare.
     if (!q && !insegna) {
       const suRecenti = recenti
-        .map((id) => liste.pdv.find((p) => p.id === id))
+        .map((id) => pdvSelezionabili.find((p) => p.id === id))
         .filter((p): p is Pdv => Boolean(p));
       if (suRecenti.length > 0) {
         out.push({ tipo: 'intestazione', testo: 'RECENTI' });
@@ -61,7 +61,7 @@ export default function SelezionePdv() {
 
     filtrati.forEach((p) => out.push({ tipo: 'pdv', pdv: p }));
     return out;
-  }, [liste.pdv, ricerca, insegna, recenti]);
+  }, [pdvSelezionabili, ricerca, insegna, recenti]);
 
   const apri = async (pdv: Pdv) => {
     if (!profilo) return;
@@ -117,9 +117,21 @@ export default function SelezionePdv() {
             ) : null
           }
           ListEmptyComponent={
-            <Text style={[testo.corpo, { color: c.testoSecondario, padding: spazio.lg }]}>
-              Nessun punto vendita corrisponde alla ricerca.
-            </Text>
+            pdvSelezionabili.length === 0 ? (
+              <View style={[stili.vuoto, { borderColor: c.bordo, backgroundColor: c.superficie }]}>
+                <Text style={[testo.corpoForte, { color: c.testo, textAlign: 'center' }]}>
+                  Nessun punto vendita assegnato
+                </Text>
+                <Text style={[testo.piccolo, { color: c.testoSecondario, textAlign: 'center' }]}>
+                  Non puoi ancora aprire una scheda. Chiedi all’amministratore di assegnarti i
+                  punti vendita di tua competenza: la modifica arriva senza aggiornare l’app.
+                </Text>
+              </View>
+            ) : (
+              <Text style={[testo.corpo, { color: c.testoSecondario, padding: spazio.lg }]}>
+                Nessun punto vendita corrisponde alla ricerca.
+              </Text>
+            )
           }
           renderItem={({ item }) =>
             item.tipo === 'intestazione' ? (
@@ -203,6 +215,13 @@ const stili = StyleSheet.create({
     justifyContent: 'center',
   },
   attesa: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spazio.md },
+  vuoto: {
+    borderWidth: 1,
+    borderRadius: raggio.lg,
+    padding: spazio.xl,
+    gap: spazio.sm,
+    alignItems: 'center',
+  },
   elenco: { padding: spazio.lg, paddingBottom: spazio.xxxl },
   voce: {
     flexDirection: 'row',

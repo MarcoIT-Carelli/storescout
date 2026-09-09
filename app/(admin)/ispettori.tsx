@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -11,6 +12,7 @@ import { Schermata } from '@/components/Schermata';
 import { Select } from '@/components/Select';
 import { TextField } from '@/components/TextField';
 import { useAuth } from '@/hooks/useAuth';
+import { contaAssegnazioni } from '@/lib/assegnazioni';
 import { messaggioErrore } from '@/lib/errori';
 import {
   aggiornaIspettore,
@@ -34,9 +36,11 @@ const MODULO_VUOTO: Modulo = { nome: '', cognome: '', email: '', ruolo: 'ispetto
 
 export default function Ispettori() {
   const c = useColori();
+  const router = useRouter();
   const { profilo: io } = useAuth();
 
   const [ispettori, setIspettori] = useState<Profilo[]>([]);
+  const [assegnazioni, setAssegnazioni] = useState<Map<string, number>>(new Map());
   const [caricamento, setCaricamento] = useState(true);
   const [stato, setStato] = useState<StatoOperazione>(INATTIVO);
   const [credenziali, setCredenziali] = useState<{ email: string; password: string } | null>(null);
@@ -50,7 +54,9 @@ export default function Ispettori() {
   const carica = useCallback(async () => {
     setCaricamento(true);
     try {
-      setIspettori(await leggiIspettori());
+      const [elenco, conteggi] = await Promise.all([leggiIspettori(), contaAssegnazioni()]);
+      setIspettori(elenco);
+      setAssegnazioni(conteggi);
       setStato(INATTIVO);
     } catch (e) {
       setStato({ tipo: 'fallito', messaggio: messaggioErrore(e) });
@@ -265,7 +271,18 @@ export default function Ispettori() {
                           in cima alla riga: questo contenitore le riporta sulla linea dei
                           pulsanti. */}
                       <View style={stili.pillole}>
-                        {p.ruolo === 'admin' ? <Badge testo="Amministratore" tono="attenzione" /> : null}
+                        {p.ruolo === 'admin' ? (
+                          <Badge testo="Amministratore" tono="attenzione" />
+                        ) : (
+                          <Badge
+                            testo={
+                              (assegnazioni.get(p.id) ?? 0) === 0
+                                ? 'Nessun punto vendita'
+                                : `${assegnazioni.get(p.id)} punti vendita`
+                            }
+                            tono={(assegnazioni.get(p.id) ?? 0) === 0 ? 'errore' : 'neutro'}
+                          />
+                        )}
                         {p.deve_cambiare_password ? <Badge testo="Password da cambiare" /> : null}
                         {!p.attivo ? <Badge testo="Disattivato" tono="errore" /> : null}
                       </View>
@@ -292,6 +309,14 @@ export default function Ispettori() {
                         accessibilityRole="button"
                       >
                         <Text style={[testo.corpoForte, { color: c.testo }]}>Password</Text>
+                      </Pressable>
+
+                      <Pressable
+                        onPress={() => router.push(`/assegnazioni/${p.id}`)}
+                        style={({ pressed }) => [stili.azione, pressed && { opacity: 0.5 }]}
+                        accessibilityRole="button"
+                      >
+                        <Text style={[testo.corpoForte, { color: c.testo }]}>Punti vendita</Text>
                       </Pressable>
 
                       {sonoIo ? null : (
@@ -401,6 +426,11 @@ export default function Ispettori() {
         <Text style={[testo.piccolo, { color: c.testoSecondario, marginTop: spazio.md }]}>
           Gli ispettori non si eliminano, si disattivano: cancellarli renderebbe illeggibile lo
           storico delle loro ispezioni.
+        </Text>
+
+        <Text style={[testo.piccolo, { color: c.testoSecondario }]}>
+          Ogni ispettore apre schede solo sui punti vendita che gli assegni da «Punti vendita».
+          Chi non ne ha nessuno non può cominciare un’ispezione.
         </Text>
       </ScrollView>
     </Schermata>

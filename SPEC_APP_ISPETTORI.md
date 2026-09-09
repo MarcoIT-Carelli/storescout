@@ -50,13 +50,14 @@ sola, su un tablet, spesso in piedi.
 
 **Ispettore**
 - Accede con email + password.
-- Crea, compila e conclude ispezioni.
+- Crea, compila e conclude ispezioni **sui soli punti vendita assegnatigli** (2026).
 - Vede lo storico delle **proprie** ispezioni.
 - Non può modificare un'ispezione già conclusa e inviata.
 
 **Admin**
 - Tutto quanto sopra, più:
   - creazione, rinomina e disattivazione ispettori
+  - assegnazione dei punti vendita visibili a ciascun ispettore (2026)
   - reset password ispettori
   - gestione anagrafica punti vendita
   - gestione liste valori (destinatari, reparti, tipi intervento) — modificabili **senza rilasciare una nuova app**

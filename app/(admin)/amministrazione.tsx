@@ -24,7 +24,7 @@ const SEZIONI: Sezione[] = [
   {
     titolo: 'Ispettori',
     descrizione:
-      'Creazione, rinomina, reset password e disattivazione. Nessuna eliminazione: lo storico delle ispezioni deve restare leggibile.',
+      'Creazione, rinomina, reset password e disattivazione, e i punti vendita che ciascuno può ispezionare. Nessuna eliminazione: lo storico delle ispezioni deve restare leggibile.',
     percorso: '/ispettori',
   },
   {

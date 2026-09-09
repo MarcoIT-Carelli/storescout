@@ -286,10 +286,27 @@ Una bozza salvata da una versione precedente arriva senza i campi aggiunti dopo,
 `leggiBozza` la fa passare da `normalizzaBozza`: senza, quei campi resterebbero `undefined`,
 e un `undefined` al posto di `null` fa fallire la conclusione di una scheda già firmata.
 
-Restano da fare, nell'ordine: visibilità dei punti vendita per ispettore (tabella nuova e
-policy), flusso di verifica per il destinatario CN, e per ultime le foto sulle attività —
-che richiedono un APK nuovo, non un `eas update`, perché portano un modulo nativo e il
-permesso `CAMERA`.
+- *Visibilità dei punti vendita* (revisione `0.0.12`): tabella `ispettore_pdv` e policy in
+  `04_visibilita_pdv.sql`. Un ispettore senza assegnazioni non vede niente e non può aprire
+  schede: la visibilità si apre con un atto esplicito, non per dimenticanza.
+
+  La restrizione è **vera, non di facciata**: sta nelle policy RLS, non nel filtro
+  dell'elenco. Un elenco filtrato lato app è una comodità che chi sa parlare con le API
+  aggira, quindi anche la insert su `ispezioni` verifica l'assegnazione.
+
+  Lettura e scelta però non coincidono, ed è voluto. La policy di select su `pdv` lascia
+  leggere anche i punti vendita **su cui l'ispettore ha già delle ispezioni**: senza quella
+  eccezione, revocare un'assegnazione renderebbe illeggibile il suo storico, che mostrerebbe
+  «punto vendita non disponibile» al posto di sigla e città su schede già firmate e spedite.
+  Per aprire una scheda nuova serve invece l'assegnazione, e la differenza fra i due insiemi
+  vive in `useListe`: `liste.pdv` è ciò che si legge, `pdvSelezionabili` ciò su cui si può
+  cominciare. **Chi aggiunge una schermata che sceglie un punto vendita usi il secondo.**
+
+Restano da fare: flusso di verifica per il destinatario CN, e per ultime le foto sulle
+attività — che richiedono un APK nuovo, non un `eas update`, perché portano un modulo
+nativo e il permesso `CAMERA`. Il rilascio è previsto per la settimana del 15 settembre
+2026, e le foto devono entrare in quell'APK: distribuirlo a mano su ogni tablet è un giro
+che conviene fare una volta sola.
 
 ### La chiave di firma
 
