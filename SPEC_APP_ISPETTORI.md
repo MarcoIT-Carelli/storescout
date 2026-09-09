@@ -404,6 +404,20 @@ Tasto **"CONCLUDI ISPEZIONE"**. Sequenza:
 Se l'invio fallisce, l'ispezione resta salvata e compare in Home con badge
 "Invio non riuscito" e tasto **"Riprova invio"**. Nessun dato va mai perso per un errore di rete.
 
+### 6.8-bis Verifica delle attività (2026)
+
+Un'ispezione con attività assegnate a un destinatario marcato `richiede_verifica` — oggi
+**CN** — non si chiude con l'invio: resta «da chiudere» in home finché l'ispettore non
+dichiara di aver controllato che l'intervento sia stato fatto.
+
+Il promemoria segue il tipo di scadenza:
+
+- **scadenza a data**: quando la data arriva, la home lo segnala;
+- **scadenza generica** (es. «al prossimo ordine»): non c'è una data da confrontare, quindi
+  il promemoria ricompare alla prima ispezione successiva su quel punto vendita.
+
+La chiusura avviene dalla scheda in sola lettura, tramite la funzione `chiudi_verifica`.
+
 ### 6.9 Storico
 - Elenco ispezioni dell'ispettore (admin: tutte), filtrabile per PDV e intervallo date.
 - Apertura in sola lettura, con tasto per riscaricare o rinviare il PDF.
@@ -600,7 +614,8 @@ modo più affidabile per scoprire tardi problemi di layout e di prestazioni.
 
 Non implementare in questa versione, per non allungare i tempi del primo rilascio:
 - allegati fotografici alle attività
-- notifiche push
+- notifiche push (gli avvisi introdotti nel 2026 sono in-app: compaiono ad app aperta e non
+  richiedono alcun servizio di notifica)
 - dashboard analitica delle attività per destinatario
 - app iOS
 - firma digitale a valore legale (le firme sono grafometriche a scopo di attestazione interna)

@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -22,6 +22,7 @@ import { useListe } from '@/hooks/useListe';
 import { messaggioErrore } from '@/lib/errori';
 import { dataEstesa, ora } from '@/lib/format';
 import { salvaRighe, salvaTestata } from '@/lib/ispezioni';
+import { leggiVerifiche, verificheDelPdv, type Verifica } from '@/lib/verifiche';
 import {
   rigaAttivitaVuota,
   rigaCompilata,
@@ -45,6 +46,27 @@ export default function Scheda() {
   const [confermaNiente, setConfermaNiente] = useState(false);
   const [confermaSvolte, setConfermaSvolte] = useState(false);
   const [confermaScarto, setConfermaScarto] = useState(false);
+  const [daVerificare, setDaVerificare] = useState<Verifica[]>([]);
+
+  /**
+   * Le verifiche lasciate aperte su questo punto vendita con una scadenza scritta a
+   * parole. Non avendo una data a cui agganciarsi, il promemoria aspetta qui: il momento
+   * per controllare «al prossimo ordine» è quando si rimette piede in negozio.
+   */
+  const ispettoreId = bozza?.ispettore_id;
+  const pdvId = bozza?.pdv_id;
+  const bozzaId = bozza?.id;
+
+  useEffect(() => {
+    if (!ispettoreId || !pdvId) return;
+    let vivo = true;
+    leggiVerifiche(ispettoreId)
+      .then((tutte) => vivo && setDaVerificare(verificheDelPdv(tutte, pdvId, bozzaId)))
+      .catch(() => vivo && setDaVerificare([]));
+    return () => {
+      vivo = false;
+    };
+  }, [ispettoreId, pdvId, bozzaId]);
 
   if (caricamento) {
     return (
@@ -166,6 +188,32 @@ export default function Scheda() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
+        {daVerificare.map((v) => (
+          <Pressable
+            key={v.ispezione.id}
+            onPress={() => router.push(`/ispezione/${v.ispezione.id}/esito`)}
+            style={({ pressed }) => [
+              stili.promemoria,
+              { backgroundColor: c.attenzioneSfondo, borderColor: c.attenzione },
+              pressed && { opacity: 0.7 },
+            ]}
+            accessibilityRole="button"
+          >
+            <Text style={[testo.corpoForte, { color: c.testo }]}>
+              Da verificare qui: ispezione n. {v.ispezione.numero}
+            </Text>
+            <Text style={[testo.piccolo, { color: c.testo }]}>
+              {v.attivita
+                .filter((a) => a.scadenzaTesto)
+                .map((a) => `${a.destinatario}: ${a.scadenzaTesto}`)
+                .join(' · ')}
+            </Text>
+            <Text style={[testo.piccolo, { color: c.testoSecondario }]}>
+              Tocca per aprirla e chiudere la verifica ›
+            </Text>
+          </Pressable>
+        ))}
+
         <Checkbox
           etichetta="Niente da rilevare"
           descrizione="Nessuna attività da segnalare in questo punto vendita."
@@ -371,6 +419,7 @@ const stili = StyleSheet.create({
   vuoto: { borderWidth: 1, borderStyle: 'dashed', borderRadius: raggio.md, padding: spazio.xl },
   separatore: { height: 1 },
   numerico: { maxWidth: 200 },
+  promemoria: { borderWidth: 1, borderRadius: raggio.md, padding: spazio.md, gap: 2 },
   rigaSvolta: { flexDirection: 'row', alignItems: 'center', gap: spazio.sm },
   eliminaRiga: { width: TOCCO_MIN, height: TOCCO_MIN, alignItems: 'center', justifyContent: 'center' },
   scarta: { minHeight: TOCCO_MIN, justifyContent: 'center', alignItems: 'center' },

@@ -4,7 +4,7 @@ import * as Print from 'expo-print';
 import { htmlScheda, type DatiScheda, type RigaPdf } from '@/pdf/template';
 import type { Bozza } from '@/types/bozza';
 import { rigaCompilata } from '@/types/bozza';
-import type { Ispezione, Pdv, Profilo, VoceLista } from '@/types/database';
+import type { Destinatario, Ispezione, Pdv, Profilo, VoceLista } from '@/types/database';
 
 import { messaggioDaFunzione } from './errori';
 import { dataBreve, daDataISO } from './format';
@@ -23,7 +23,7 @@ export type EsitoInvio = { inviata: boolean; messaggio: string };
 export type Avanzamento = { fase: Fase; messaggio: string };
 
 type Riferimenti = {
-  destinatari: VoceLista[];
+  destinatari: Destinatario[];
   reparti: VoceLista[];
   tipiIntervento: VoceLista[];
 };
@@ -164,6 +164,22 @@ export async function concludiIspezione(
     firmaResponsabilePath = await caricaFirma(bozza.firma_responsabile_uri, `${bozza.id}/responsabile.png`);
   }
 
+  /**
+   * Una scheda con attività assegnate a un destinatario «da verificare» non si chiude
+   * quando parte la mail: resta in carico all'ispettore, che dovrà tornare a controllare
+   * che l'intervento sia stato fatto. Quali destinatari lo siano lo dice il database, non
+   * il loro nome: le liste valori si modificano a runtime, e una condizione legata al nome
+   * si romperebbe in silenzio alla prima rinomina.
+   */
+  const daVerificare = new Set(
+    rif.destinatari.filter((d) => d.richiede_verifica).map((d) => d.id),
+  );
+  const inVerifica = bozza.niente_da_rilevare
+    ? false
+    : bozza.attivita
+        .filter(rigaCompilata)
+        .some((r) => r.destinatario_id !== null && daVerificare.has(r.destinatario_id));
+
   onAvanzamento({ fase: 'pdf', messaggio: 'Generazione del PDF…' });
   const oraUscita = bozza.ora_uscita ? new Date(bozza.ora_uscita) : new Date();
 
@@ -223,6 +239,7 @@ export async function concludiIspezione(
       motivo_assenza_firma: bozza.motivo_assenza_firma.trim() || null,
       voto: bozza.voto,
       rotture_stock_promo: bozza.rotture_stock_promo,
+      in_verifica: inVerifica,
       firma_ispettore_path: firmaIspettorePath,
       firma_responsabile_path: firmaResponsabilePath,
       pdf_path: percorsoPdf,

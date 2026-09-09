@@ -17,6 +17,7 @@ import { leggiBozze } from '@/db/bozze';
 import { messaggioErrore } from '@/lib/errori';
 import { dataRelativa, ora } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
+import { leggiVerifiche, type Verifica } from '@/lib/verifiche';
 import type { Bozza } from '@/types/bozza';
 import type { Ispezione, StatoIspezione } from '@/types/database';
 import { REVISIONE } from '@/lib/versione';
@@ -59,6 +60,7 @@ export default function Home() {
   const { pdvPerId, daCache } = useListe();
 
   const [voci, setVoci] = useState<Voce[]>([]);
+  const [verifiche, setVerifiche] = useState<Verifica[]>([]);
   const [aggiornando, setAggiornando] = useState(false);
   const [stato, setStato] = useState<StatoOperazione>(INATTIVO);
 
@@ -93,6 +95,10 @@ export default function Home() {
         ispezione: i,
         quando: new Date(i.ora_uscita ?? i.ora_ingresso),
       }));
+
+      // Le schede da chiudere restano in cima: sono l'unica cosa che chiede
+      // di essere fatta, mentre il resto dell'elenco è solo memoria.
+      setVerifiche(await leggiVerifiche(profilo.id));
       setStato(INATTIVO);
     } catch (e) {
       setStato({ tipo: 'fallito', messaggio: messaggioErrore(e) });
@@ -109,6 +115,7 @@ export default function Home() {
   );
 
   const nome = profilo?.nome?.trim() || '';
+  const scadute = verifiche.filter((v) => v.scaduta);
 
   return (
     <Schermata>
@@ -165,6 +172,76 @@ export default function Home() {
               stato={ESITO_RICERCA[aggiornamento.fase] ?? INATTIVO}
               onChiudi={aggiornamento.chiudi}
             />
+
+            {verifiche.length > 0 ? (
+              <View style={{ gap: spazio.sm }}>
+                <Text style={[testo.etichetta, { color: c.testoSecondario }]}>DA CHIUDERE</Text>
+                {scadute.length > 0 ? (
+                  <View
+                    style={[
+                      stili.avvisoScadenza,
+                      { backgroundColor: c.attenzioneSfondo, borderColor: c.attenzione },
+                    ]}
+                  >
+                    <Text style={[testo.piccolo, { color: c.testo }]}>
+                      {scadute.length === 1
+                        ? 'Un’attività da verificare ha raggiunto la scadenza.'
+                        : `${scadute.length} attività da verificare hanno raggiunto la scadenza.`}
+                    </Text>
+                  </View>
+                ) : null}
+                {verifiche.map((v) => {
+                  const pdv = pdvPerId(v.ispezione.pdv_id);
+                  return (
+                    <Pressable
+                      key={`v:${v.ispezione.id}`}
+                      onPress={() => router.push(`/ispezione/${v.ispezione.id}/esito`)}
+                      style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
+                    >
+                      <Card inCorso>
+                        <View style={stili.riga}>
+                          <View style={[stili.sigla, { backgroundColor: c.giallo }]}>
+                            <Text style={[testo.sigla, { color: c.suGiallo }]}>
+                              {pdv?.codice ?? '··'}
+                            </Text>
+                          </View>
+                          <View style={stili.centro}>
+                            <Text style={[testo.corpoForte, { color: c.testo }]} numberOfLines={1}>
+                              {pdv ? pdv.citta : 'Punto vendita non disponibile'}
+                            </Text>
+                            <Text style={[testo.piccolo, { color: c.testoSecondario }]}>
+                              n. {v.ispezione.numero} ·{' '}
+                              {v.attivita.length === 1
+                                ? '1 attività da verificare'
+                                : `${v.attivita.length} attività da verificare`}
+                            </Text>
+                            <Text
+                              style={[
+                                testo.piccolo,
+                                { color: v.scaduta ? c.attenzione : c.testoSecondario },
+                              ]}
+                            >
+                              {v.prossimaScadenza
+                                ? `Scadenza ${dataRelativa(v.prossimaScadenza)}`
+                                : 'Scadenza da concordare in negozio'}
+                            </Text>
+                          </View>
+                          <View style={stili.destra}>
+                            <Badge
+                              testo={v.scaduta ? 'Scaduta' : 'Da chiudere'}
+                              tono={v.scaduta ? 'attenzione' : 'corso'}
+                            />
+                            <Text style={[testo.piccolo, { color: c.testoSecondario }]}>
+                              Apri ›
+                            </Text>
+                          </View>
+                        </View>
+                      </Card>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
 
             <Text style={[testo.etichetta, { color: c.testoSecondario }]}>ULTIME ISPEZIONI</Text>
           </View>
@@ -280,6 +357,7 @@ const stili = StyleSheet.create({
     borderColor: 'transparent',
   },
   centro: { flex: 1, gap: 2 },
+  avvisoScadenza: { borderWidth: 1, borderRadius: raggio.md, padding: spazio.md },
   piede: { borderTopWidth: 1, paddingVertical: spazio.sm },
   versione: { textAlign: 'center' },
   destra: { alignItems: 'flex-end', gap: spazio.xs },

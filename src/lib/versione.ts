@@ -10,7 +10,7 @@
  * La regola quindi è: `version` si alza solo quando si distribuisce un APK nuovo,
  * `REVISIONE` a ogni aggiornamento via rete.
  */
-export const REVISIONE = '0.0.12';
+export const REVISIONE = '0.0.13';
 
 /**
  * Che cosa è cambiato, per revisione. Compare una volta sola dopo l'aggiornamento.
@@ -20,6 +20,11 @@ export const REVISIONE = '0.0.12';
  * senza voci non mostra niente.
  */
 export const NOVITA: Record<string, string[]> = {
+  '0.0.13': [
+    'Le schede con attività assegnate a CN non si chiudono con l’invio: restano in prima pagina sotto «Da chiudere» finché non confermi di aver verificato l’intervento.',
+    'Quando la scadenza di una di queste attività arriva, la prima pagina te lo segnala.',
+    'Se invece la scadenza è scritta a parole («al prossimo ordine»), il promemoria ricompare quando apri una nuova ispezione su quel punto vendita.',
+  ],
   '0.0.12': [
     'Ogni ispettore vede soltanto i punti vendita di sua competenza: li assegna l’amministratore, e cambiano senza aggiornare l’app.',
     'Le ispezioni già fatte restano visibili nello storico anche se un punto vendita non è più fra i tuoi.',

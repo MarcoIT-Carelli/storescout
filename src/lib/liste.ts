@@ -16,6 +16,11 @@ export type Voce = {
   attivo: boolean;
   /** Solo per `destinatari`: indirizzo a cui inoltrare le attività assegnate. */
   email?: string | null;
+  /**
+   * Solo per `destinatari`: le attività assegnate a questa voce tengono la scheda
+   * «da chiudere» finché l'ispettore non ha verificato che l'intervento sia stato fatto.
+   */
+  richiede_verifica?: boolean;
 };
 
 export const ETICHETTE: Record<Tabella, { titolo: string; singolare: string; conEmail: boolean }> = {
@@ -24,7 +29,10 @@ export const ETICHETTE: Record<Tabella, { titolo: string; singolare: string; con
   tipi_intervento: { titolo: 'Tipi di intervento', singolare: 'tipo di intervento', conEmail: false },
 };
 
-const colonne = (t: Tabella) => (t === 'destinatari' ? 'id, nome, ordine, attivo, email' : 'id, nome, ordine, attivo');
+const colonne = (t: Tabella) =>
+  t === 'destinatari'
+    ? 'id, nome, ordine, attivo, email, richiede_verifica'
+    : 'id, nome, ordine, attivo';
 
 /** Legge tutte le voci, comprese quelle disattivate: l'admin le deve poter riattivare. */
 export async function leggiVoci(tabella: Tabella): Promise<Voce[]> {
@@ -38,9 +46,13 @@ export async function creaVoce(
   nome: string,
   email: string | null,
   ordine: number,
+  richiedeVerifica = false,
 ): Promise<void> {
   const riga: Record<string, unknown> = { nome: nome.trim(), ordine, attivo: true };
-  if (ETICHETTE[tabella].conEmail) riga.email = email?.trim() || null;
+  if (ETICHETTE[tabella].conEmail) {
+    riga.email = email?.trim() || null;
+    riga.richiede_verifica = richiedeVerifica;
+  }
 
   const { error } = await supabase.from(tabella).insert(riga);
   if (error) throw error;
@@ -49,12 +61,15 @@ export async function creaVoce(
 export async function aggiornaVoce(
   tabella: Tabella,
   id: string,
-  cambi: { nome?: string; email?: string | null; attivo?: boolean },
+  cambi: { nome?: string; email?: string | null; attivo?: boolean; richiede_verifica?: boolean },
 ): Promise<void> {
   const riga: Record<string, unknown> = {};
   if (cambi.nome !== undefined) riga.nome = cambi.nome.trim();
   if (cambi.attivo !== undefined) riga.attivo = cambi.attivo;
   if (cambi.email !== undefined && ETICHETTE[tabella].conEmail) riga.email = cambi.email?.trim() || null;
+  if (cambi.richiede_verifica !== undefined && ETICHETTE[tabella].conEmail) {
+    riga.richiede_verifica = cambi.richiede_verifica;
+  }
 
   const { error } = await supabase.from(tabella).update(riga).eq('id', id);
   if (error) throw error;

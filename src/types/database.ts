@@ -42,7 +42,11 @@ export type VoceLista = {
   attivo: boolean;
 };
 
-export type Destinatario = VoceLista & { email: string | null };
+export type Destinatario = VoceLista & {
+  email: string | null;
+  /** Le attività assegnate a questo destinatario tengono la scheda «da chiudere». */
+  richiede_verifica: boolean;
+};
 
 export type Ispezione = {
   id: string;
@@ -60,6 +64,9 @@ export type Ispezione = {
   motivo_assenza_firma: string | null;
   voto: number | null;
   rotture_stock_promo: number | null;
+  /** La scheda resta in carico all'ispettore finché non chiude la verifica. */
+  in_verifica: boolean;
+  verifica_chiusa_at: string | null;
   pdf_path: string | null;
   stato: StatoIspezione;
   created_at: string;

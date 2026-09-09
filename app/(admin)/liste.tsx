@@ -5,6 +5,7 @@ import { Badge } from '@/components/Badge';
 import { BannerStato, INATTIVO, type StatoOperazione } from '@/components/BannerStato';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { Checkbox } from '@/components/Checkbox';
 import { ConfermaInLinea } from '@/components/ConfermaInLinea';
 import { ElencoRiordinabile } from '@/components/ElencoRiordinabile';
 import { Schermata } from '@/components/Schermata';
@@ -39,6 +40,7 @@ export default function ListeValori() {
   const [nuova, setNuova] = useState(false);
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
+  const [verifica, setVerifica] = useState(false);
   const [confermaDisattiva, setConfermaDisattiva] = useState<string | null>(null);
 
   const conEmail = ETICHETTE[tabella].conEmail;
@@ -64,6 +66,7 @@ export default function ListeValori() {
     setNuova(false);
     setNome('');
     setEmail('');
+    setVerifica(false);
   };
 
   const apriModifica = (v: Voce) => {
@@ -71,6 +74,7 @@ export default function ListeValori() {
     setInModifica(v.id);
     setNome(v.nome);
     setEmail(v.email ?? '');
+    setVerifica(v.richiede_verifica ?? false);
   };
 
   const emailNonValida = conEmail && email.trim().length > 0 && !emailPlausibile(email);
@@ -80,9 +84,13 @@ export default function ListeValori() {
     setStato({ tipo: 'inCorso', messaggio: 'Salvataggio…' });
     try {
       if (nuova) {
-        await creaVoce(tabella, nome, conEmail ? email : null, voci.length + 1);
+        await creaVoce(tabella, nome, conEmail ? email : null, voci.length + 1, conEmail && verifica);
       } else if (inModifica) {
-        await aggiornaVoce(tabella, inModifica, { nome, email: conEmail ? email : undefined });
+        await aggiornaVoce(tabella, inModifica, {
+          nome,
+          email: conEmail ? email : undefined,
+          richiede_verifica: conEmail ? verifica : undefined,
+        });
       }
       chiudiForm();
       await carica();
@@ -207,6 +215,14 @@ export default function ListeValori() {
                         aiuto="Lascia vuoto se il destinatario non deve ricevere email."
                       />
                     ) : null}
+                    {conEmail ? (
+                      <Checkbox
+                        etichetta="Le sue attività vanno verificate"
+                        descrizione="Una scheda con attività assegnate a questo destinatario resta «da chiudere» in prima pagina anche dopo l’invio, finché l’ispettore non conferma di aver controllato."
+                        valore={verifica}
+                        onChange={setVerifica}
+                      />
+                    ) : null}
                     <View style={stili.azioni}>
                       <Button titolo="Annulla" variante="secondario" compatto onPress={chiudiForm} />
                       <Button
@@ -233,9 +249,17 @@ export default function ListeValori() {
                             {v.email ?? 'indirizzo non impostato'}
                           </Text>
                         ) : null}
+                        {v.richiede_verifica ? (
+                          <Text style={[testo.piccolo, { color: c.testoSecondario }]}>
+                            Le sue attività restano da chiudere dopo l’invio.
+                          </Text>
+                        ) : null}
                       </View>
 
-                      {!v.attivo ? <Badge testo="Disattivato" /> : null}
+                      <View style={stili.pillole}>
+                        {v.richiede_verifica ? <Badge testo="Da verificare" tono="attenzione" /> : null}
+                        {!v.attivo ? <Badge testo="Disattivato" /> : null}
+                      </View>
 
                       <Pressable
                         onPress={() => apriModifica(v)}
@@ -292,6 +316,14 @@ export default function ListeValori() {
                   errore={emailNonValida ? 'Indirizzo non valido.' : undefined}
                 />
               ) : null}
+              {conEmail ? (
+                <Checkbox
+                  etichetta="Le sue attività vanno verificate"
+                  descrizione="La scheda resta «da chiudere» in prima pagina anche dopo l’invio."
+                  valore={verifica}
+                  onChange={setVerifica}
+                />
+              ) : null}
               <View style={stili.azioni}>
                 <Button titolo="Annulla" variante="secondario" compatto onPress={chiudiForm} />
                 <Button
@@ -338,6 +370,7 @@ const stili = StyleSheet.create({
   corpo: { padding: spazio.lg, gap: spazio.md, paddingBottom: spazio.xxxl },
   avviso: { borderWidth: 1, borderRadius: raggio.md, padding: spazio.md },
   riga: { flexDirection: 'row', alignItems: 'center', gap: spazio.md, flexWrap: 'wrap' },
+  pillole: { flexDirection: 'row', alignItems: 'center', gap: spazio.sm },
   dati: { flex: 1, gap: 2, minWidth: 160 },
   azione: { minHeight: TOCCO_MIN, justifyContent: 'center', paddingHorizontal: spazio.sm },
   azioni: { flexDirection: 'row', gap: spazio.sm, justifyContent: 'flex-end' },

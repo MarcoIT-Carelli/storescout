@@ -302,8 +302,31 @@ e un `undefined` al posto di `null` fa fallire la conclusione di una scheda già
   vive in `useListe`: `liste.pdv` è ciò che si legge, `pdvSelezionabili` ciò su cui si può
   cominciare. **Chi aggiunge una schermata che sceglie un punto vendita usi il secondo.**
 
-Restano da fare: flusso di verifica per il destinatario CN, e per ultime le foto sulle
-attività — che richiedono un APK nuovo, non un `eas update`, perché portano un modulo
+- *Verifica delle attività CN* (revisione `0.0.13`): `05_verifica_cn.sql`. Una scheda con
+  attività assegnate a un destinatario marcato `richiede_verifica` non si considera chiusa
+  quando parte la mail: resta in carico all'ispettore, in prima pagina sotto «Da chiudere»,
+  finché non è lui a dichiararla conclusa.
+
+  **Il destinatario si riconosce da un flag, non dal nome.** Le liste valori si modificano
+  a runtime, quindi un `nome === 'CN'` nel codice si romperebbe in silenzio alla prima
+  rinomina, e non permetterebbe di aggiungerne un secondo. Il flag si accende dal pannello
+  liste, e il seed lo mette su CN.
+
+  `in_verifica` è una colonna a parte e non un valore di `stato_ispezione`: una scheda può
+  essere insieme «inviata» e «da chiudere», e schiacciare i due significati in un enum solo
+  farebbe perdere la traccia di un invio fallito mentre è in verifica.
+
+  Chiudere la verifica passa dalla funzione `chiudi_verifica`, non da un update: la policy
+  di `ispezioni` si ferma alle bozze — una scheda firmata non si tocca — e allargarla per
+  un solo campo aprirebbe l'intera riga, perché **le policy non distinguono fra colonne**.
+
+  Il promemoria arriva in due modi perché le scadenze sono di due tipi. Con una data si
+  aspetta che arrivi e lo si dice in home. Una scadenza scritta a parole non ha niente da
+  confrontare, quindi si aggancia al luogo invece che al tempo e ricompare all'ispezione
+  successiva su quel punto vendita: «al prossimo ordine» si verifica quando si rientra in
+  quel negozio, non a una data che nessuno ha fissato.
+
+Resta da fare: le foto sulle attività — che richiedono un APK nuovo, non un `eas update`, perché portano un modulo
 nativo e il permesso `CAMERA`. Il rilascio è previsto per la settimana del 15 settembre
 2026, e le foto devono entrare in quell'APK: distribuirlo a mano su ogni tablet è un giro
 che conviene fare una volta sola.

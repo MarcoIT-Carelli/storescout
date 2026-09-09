@@ -21,6 +21,7 @@ import { useListe } from '@/hooks/useListe';
 import { messaggioErrore } from '@/lib/errori';
 import { dataBreve, daDataISO, durata, ora } from '@/lib/format';
 import { caricaDettaglio, inviaScheda, urlPdf, type Dettaglio } from '@/lib/ispezioni';
+import { chiudiVerifica } from '@/lib/verifiche';
 import type { StatoIspezione } from '@/types/database';
 import { raggio, SOGLIA_LARGA, spazio, testo, useColori } from '@/theme';
 
@@ -96,6 +97,25 @@ export default function Esito() {
     );
   };
 
+  const chiudi = async () => {
+    if (!id) return;
+    setStato({ tipo: 'inCorso', messaggio: 'Chiusura della verifica…' });
+    try {
+      const chiusa = await chiudiVerifica(id);
+      await carica(true);
+      setStato(
+        chiusa
+          ? { tipo: 'riuscito', messaggio: 'Verifica chiusa: la scheda esce dalle cose da fare.' }
+          : {
+              tipo: 'fallito',
+              messaggio: 'La verifica risulta già chiusa, forse da un altro dispositivo.',
+            },
+      );
+    } catch (e) {
+      setStato({ tipo: 'fallito', messaggio: messaggioErrore(e) });
+    }
+  };
+
   const apriPdf = async () => {
     const percorso = dettaglio?.ispezione.pdf_path;
     if (!percorso) return;
@@ -154,6 +174,24 @@ export default function Esito() {
             {aspetto.spiegazione}
           </Text>
         </Card>
+
+        {i.in_verifica ? (
+          <Card inCorso>
+            <Text style={[testo.etichetta, { color: c.testoSecondario }]}>DA CHIUDERE</Text>
+            <Text style={[testo.corpo, { color: c.testo, marginTop: spazio.sm }]}>
+              Questa scheda ha attività che restano da verificare. Quando sei tornato in negozio
+              e hai controllato che l’intervento sia stato fatto, chiudila: sparisce dalle cose
+              da fare in prima pagina.
+            </Text>
+            <Button
+              titolo="Chiudi la verifica"
+              larghezzaPiena
+              onPress={chiudi}
+              inCorso={stato.tipo === 'inCorso'}
+              style={{ marginTop: spazio.md }}
+            />
+          </Card>
+        ) : null}
 
         <Card>
           <Text style={[testo.etichetta, { color: c.testoSecondario, marginBottom: spazio.sm }]}>
