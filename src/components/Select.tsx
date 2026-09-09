@@ -8,7 +8,8 @@ import { raggio, spazio, testo, TOCCO_MIN, useColori } from '@/theme';
 export type Opzione = { id: string; nome: string };
 
 type Props = {
-  etichetta: string;
+  /** Sopra il campo. Si omette quando il campo si spiega da sé, come un «+ Aggiungi». */
+  etichetta?: string;
   opzioni: Opzione[];
   valore: string | null;
   onChange: (id: string | null) => void;
@@ -55,13 +56,17 @@ export function Select({
 
   return (
     <View style={[{ gap: spazio.xs }, contenitore]}>
-      <Text style={[testo.etichetta, { color: c.testoSecondario }]}>{etichetta}</Text>
+      {etichetta ? (
+        <Text style={[testo.etichetta, { color: c.testoSecondario }]}>{etichetta}</Text>
+      ) : null}
 
       <Pressable
         onPress={() => !disabilitato && setAperto(true)}
         disabled={disabilitato}
         accessibilityRole="button"
-        accessibilityLabel={`${etichetta}: ${scelta?.nome ?? 'nessuna scelta'}`}
+        accessibilityLabel={
+          etichetta ? `${etichetta}: ${scelta?.nome ?? 'nessuna scelta'}` : (scelta?.nome ?? segnaposto)
+        }
         style={({ pressed }) => [
           stili.campo,
           {
@@ -89,7 +94,7 @@ export function Select({
             onPress={(e) => e.stopPropagation()}
           >
             <View style={[stili.testataFoglio, { borderBottomColor: c.bordo }]}>
-              <Text style={[testo.sezione, { color: c.testo }]}>{etichetta}</Text>
+              <Text style={[testo.sezione, { color: c.testo }]}>{etichetta || segnaposto}</Text>
               <Pressable onPress={chiudi} hitSlop={12} style={stili.chiudi}>
                 <Text style={[testo.corpoForte, { color: c.testoSecondario }]}>Chiudi</Text>
               </Pressable>

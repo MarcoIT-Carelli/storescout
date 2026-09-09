@@ -294,6 +294,15 @@ e un `undefined` al posto di `null` fa fallire la conclusione di una scheda già
   dell'elenco. Un elenco filtrato lato app è una comodità che chi sa parlare con le API
   aggira, quindi anche la insert su `ispezioni` verifica l'assegnazione.
 
+  L'assegnazione si fa **dentro il modulo di modifica dell'ispettore**, sotto il ruolo:
+  un «+ Aggiungi punto vendita» che apre la tendina e l'elenco di quelli già assegnati
+  sopra, ciascuno con la sua ✕. È stata prima una schermata a parte con le spunte su tutti
+  e quarantasei, poi rifatta così su richiesta del committente: comporre l'elenco avendo
+  sotto gli occhi quello che c'è già vale più della rapidità di segnarne dieci di fila.
+  Gli stessi campi compaiono alla creazione, perché un ispettore appena creato e senza
+  punti vendita non può aprire nemmeno una scheda, e quello è il momento in cui ci si
+  dimentica di assegnarglieli.
+
   Lettura e scelta però non coincidono, ed è voluto. La policy di select su `pdv` lascia
   leggere anche i punti vendita **su cui l'ispettore ha già delle ispezioni**: senza quella
   eccezione, revocare un'assegnazione renderebbe illeggibile il suo storico, che mostrerebbe

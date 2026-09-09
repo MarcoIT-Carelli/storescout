@@ -1,4 +1,3 @@
-import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -12,7 +11,8 @@ import { Schermata } from '@/components/Schermata';
 import { Select } from '@/components/Select';
 import { TextField } from '@/components/TextField';
 import { useAuth } from '@/hooks/useAuth';
-import { contaAssegnazioni } from '@/lib/assegnazioni';
+import { useListe } from '@/hooks/useListe';
+import { contaAssegnazioni, leggiAssegnazioni, salvaAssegnazioni } from '@/lib/assegnazioni';
 import { messaggioErrore } from '@/lib/errori';
 import {
   aggiornaIspettore,
@@ -36,8 +36,8 @@ const MODULO_VUOTO: Modulo = { nome: '', cognome: '', email: '', ruolo: 'ispetto
 
 export default function Ispettori() {
   const c = useColori();
-  const router = useRouter();
   const { profilo: io } = useAuth();
+  const { liste, pdvPerId } = useListe();
 
   const [ispettori, setIspettori] = useState<Profilo[]>([]);
   const [assegnazioni, setAssegnazioni] = useState<Map<string, number>>(new Map());
@@ -50,6 +50,8 @@ export default function Ispettori() {
   const [inModifica, setInModifica] = useState<string | null>(null);
   const [inReset, setInReset] = useState<string | null>(null);
   const [confermaDisattiva, setConfermaDisattiva] = useState<string | null>(null);
+  /** Punti vendita dell'ispettore aperto in modifica, o del nuovo che si sta creando. */
+  const [pdvScelti, setPdvScelti] = useState<string[]>([]);
 
   const carica = useCallback(async () => {
     setCaricamento(true);
@@ -74,7 +76,24 @@ export default function Ispettori() {
     setInModifica(null);
     setInReset(null);
     setModulo(MODULO_VUOTO);
+    setPdvScelti([]);
   };
+
+  /** In ordine di sigla, come ovunque nell'app si elenchino i punti vendita. */
+  const assegnatiOrdinati = [...pdvScelti].sort((a, b) => {
+    const pa = pdvPerId(a)?.codice ?? '';
+    const pb = pdvPerId(b)?.codice ?? '';
+    return pa.localeCompare(pb);
+  });
+
+  const nomePdv = (id: string) => {
+    const p = pdvPerId(id);
+    return p ? `${p.codice} — ${p.citta}` : 'Punto vendita non disponibile';
+  };
+
+  const daAggiungere = liste.pdv
+    .filter((p) => !pdvScelti.includes(p.id))
+    .map((p) => ({ id: p.id, nome: `${p.codice} — ${p.citta}` }));
 
   const emailValida = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(modulo.email.trim());
   const puoCreare =
@@ -86,13 +105,19 @@ export default function Ispettori() {
   const crea = async () => {
     setStato({ tipo: 'inCorso', messaggio: 'Creazione dell’account…' });
     try {
-      await creaIspettore({
+      const creato = await creaIspettore({
         nome: modulo.nome,
         cognome: modulo.cognome,
         email: modulo.email,
         ruolo: modulo.ruolo,
         password: modulo.password,
       });
+      // Subito, non in un secondo passaggio: un ispettore senza punti vendita non può
+      // aprire nemmeno una scheda, e il momento in cui ci si dimentica di assegnarglieli
+      // è quello in cui si chiude il modulo pensando di aver finito.
+      if (modulo.ruolo !== 'admin' && pdvScelti.length > 0) {
+        await salvaAssegnazioni(creato.id, pdvScelti);
+      }
       setCredenziali({ email: modulo.email.trim().toLowerCase(), password: modulo.password });
       chiudi();
       await carica();
@@ -110,6 +135,9 @@ export default function Ispettori() {
         cognome: modulo.cognome.trim(),
         ruolo: modulo.ruolo,
       });
+      // Un amministratore vede tutto per suo conto: assegnargli dei punti vendita
+      // sarebbe una riga in più nel database che non cambia niente.
+      if (modulo.ruolo !== 'admin') await salvaAssegnazioni(p.id, pdvScelti);
       chiudi();
       await carica();
       setStato({ tipo: 'riuscito', messaggio: 'Dati aggiornati.' });
@@ -215,6 +243,21 @@ export default function Ispettori() {
                         amministratori.
                       </Text>
                     ) : null}
+
+                    {modulo.ruolo === 'admin' ? (
+                      <Text style={[testo.piccolo, { color: c.testoSecondario }]}>
+                        Gli amministratori vedono tutti i punti vendita: non serve assegnarglieli.
+                      </Text>
+                    ) : (
+                      <BloccoPuntiVendita
+                        assegnati={assegnatiOrdinati}
+                        daAggiungere={daAggiungere}
+                        nomeDi={nomePdv}
+                        onAggiungi={(id) => setPdvScelti((p) => [...p, id])}
+                        onTogli={(id) => setPdvScelti((p) => p.filter((x) => x !== id))}
+                      />
+                    )}
+
                     <View style={stili.azioni}>
                       <Button titolo="Annulla" variante="secondario" compatto onPress={chiudi} />
                       <Button
@@ -292,6 +335,13 @@ export default function Ispettori() {
                           chiudi();
                           setInModifica(p.id);
                           setModulo({ ...MODULO_VUOTO, nome: p.nome, cognome: p.cognome, ruolo: p.ruolo });
+                          // I punti vendita arrivano dopo l'apertura del modulo: il campo
+                          // resta vuoto per un istante invece di far aspettare tutto il resto.
+                          leggiAssegnazioni(p.id)
+                            .then(setPdvScelti)
+                            .catch((e: unknown) =>
+                              setStato({ tipo: 'fallito', messaggio: messaggioErrore(e) }),
+                            );
                         }}
                         style={({ pressed }) => [stili.azione, pressed && { opacity: 0.5 }]}
                         accessibilityRole="button"
@@ -311,13 +361,6 @@ export default function Ispettori() {
                         <Text style={[testo.corpoForte, { color: c.testo }]}>Password</Text>
                       </Pressable>
 
-                      <Pressable
-                        onPress={() => router.push(`/assegnazioni/${p.id}`)}
-                        style={({ pressed }) => [stili.azione, pressed && { opacity: 0.5 }]}
-                        accessibilityRole="button"
-                      >
-                        <Text style={[testo.corpoForte, { color: c.testo }]}>Punti vendita</Text>
-                      </Pressable>
 
                       {sonoIo ? null : (
                         <Pressable
@@ -392,6 +435,16 @@ export default function Ispettori() {
                 aiuto={`Almeno ${LUNGHEZZA_MINIMA_PASSWORD} caratteri. L’app ne chiederà il cambio al primo accesso.`}
               />
               <ForzaPassword password={modulo.password} />
+
+              {modulo.ruolo === 'admin' ? null : (
+                <BloccoPuntiVendita
+                  assegnati={assegnatiOrdinati}
+                  daAggiungere={daAggiungere}
+                  nomeDi={nomePdv}
+                  onAggiungi={(id) => setPdvScelti((p) => [...p, id])}
+                  onTogli={(id) => setPdvScelti((p) => p.filter((x) => x !== id))}
+                />
+              )}
               <View style={stili.azioni}>
                 <Button
                   titolo="Genera"
@@ -429,16 +482,92 @@ export default function Ispettori() {
         </Text>
 
         <Text style={[testo.piccolo, { color: c.testoSecondario }]}>
-          Ogni ispettore apre schede solo sui punti vendita che gli assegni da «Punti vendita».
-          Chi non ne ha nessuno non può cominciare un’ispezione.
+          Ogni ispettore apre schede solo sui punti vendita che gli assegni: li trovi dentro
+          «Modifica», sotto il ruolo. Chi non ne ha nessuno non può cominciare un’ispezione.
         </Text>
       </ScrollView>
     </Schermata>
   );
 }
 
+/**
+ * I punti vendita di un ispettore, dentro il modulo che lo riguarda.
+ *
+ * Si aggiungono uno alla volta dalla tendina e si tolgono con la ✕ accanto al nome:
+ * l'elenco di ciò che è già assegnato sta sotto gli occhi mentre lo si compone, che è
+ * il motivo per cui vive qui e non in una schermata a parte.
+ */
+function BloccoPuntiVendita({
+  assegnati,
+  daAggiungere,
+  nomeDi,
+  onAggiungi,
+  onTogli,
+}: {
+  assegnati: string[];
+  daAggiungere: { id: string; nome: string }[];
+  nomeDi: (id: string) => string;
+  onAggiungi: (id: string) => void;
+  onTogli: (id: string) => void;
+}) {
+  const c = useColori();
+
+  return (
+    <View style={{ gap: spazio.sm }}>
+      <Text style={[testo.etichetta, { color: c.testoSecondario }]}>
+        PUNTI VENDITA {assegnati.length > 0 ? `(${assegnati.length})` : ''}
+      </Text>
+
+      {assegnati.length === 0 ? (
+        <View style={[stili.avviso, { backgroundColor: c.attenzioneSfondo, borderColor: c.attenzione }]}>
+          <Text style={[testo.piccolo, { color: c.testo }]}>
+            Nessun punto vendita assegnato: non potrà aprire ispezioni finché non gliene dai
+            almeno uno.
+          </Text>
+        </View>
+      ) : (
+        assegnati.map((id) => (
+          <View key={id} style={[stili.assegnato, { borderColor: c.bordo }]}>
+            <Text style={[testo.corpo, { color: c.testo, flex: 1 }]} numberOfLines={1}>
+              {nomeDi(id)}
+            </Text>
+            <Pressable
+              onPress={() => onTogli(id)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={`Togli ${nomeDi(id)}`}
+              style={({ pressed }) => [stili.togli, pressed && { opacity: 0.5 }]}
+            >
+              <Text style={{ color: c.errore, fontSize: 18 }}>✕</Text>
+            </Pressable>
+          </View>
+        ))
+      )}
+
+      <Select
+        opzioni={daAggiungere}
+        valore={null}
+        onChange={(id) => id && onAggiungi(id)}
+        segnaposto="+  Aggiungi punto vendita"
+        sogliaRicerca={8}
+      />
+    </View>
+  );
+}
+
 const stili = StyleSheet.create({
   corpo: { padding: spazio.lg, gap: spazio.md, paddingBottom: spazio.xxxl },
+  avviso: { borderWidth: 1, borderRadius: raggio.md, padding: spazio.md },
+  assegnato: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spazio.sm,
+    borderWidth: 1,
+    borderRadius: raggio.md,
+    paddingLeft: spazio.md,
+    minHeight: TOCCO_MIN,
+  },
+  togli: { width: TOCCO_MIN, height: TOCCO_MIN, alignItems: 'center', justifyContent: 'center' },
   credenziali: { borderWidth: 1, borderRadius: raggio.md, padding: spazio.lg },
   riga: { flexDirection: 'row', alignItems: 'center', gap: spazio.md, flexWrap: 'wrap' },
   dati: { flex: 1, gap: 2, minWidth: 180 },
