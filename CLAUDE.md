@@ -94,6 +94,23 @@ sbagliare.
 La dimensione la dichiara chi dispone i campi, con un prop `contenitore`. Quando si aggiunge
 una schermata con dei filtri o una griglia, va pensata **anche stretta**.
 
+### I campi di testo si scrivono con la S Pen
+
+I tablet in campo hanno una S Pen, e la tastiera software si prende metà schermo proprio
+mentre serve vedere il campo che si sta compilando. I campi di testo libero compilati in
+punto vendita portano quindi `penna` su `TextField`: la tastiera non compare al tocco e un
+pulsante **Tastiera** dentro il campo la richiama per chi preferisce digitare.
+
+Sono i campi della scheda (note, scadenza generica, note sulla scadenza, attività svolte) e
+quelli delle firme (nome del responsabile, motivo dell'assenza). **Login, cambio password e
+pannello admin restano con la tastiera normale**: lì si digita e basta, e nasconderla
+sarebbe un ostacolo.
+
+Riaprire la tastiera richiede un `blur()` seguito da `focus()`: Android valuta
+`showSoftInputOnFocus` al momento del fuoco, quindi cambiarlo su un campo già attivo non
+ha alcun effetto. Il `blur()` intermedio non va scambiato per un'uscita dal campo, altrimenti
+la modalità penna si riattiva un istante dopo averla tolta.
+
 **Il giallo non è mai colore di testo su fondo chiaro.** Solo riempimento con testo nero sopra,
 o marchio su fondo nero. Gli usi ammessi sono cinque, e non se ne aggiungono altri senza
 motivo: pulsante primario, indicatore di ispezione in corso, marchio, **testata delle
@@ -241,6 +258,38 @@ Quattro cose imparate a caro prezzo, tutte da non rifare:
   (`eas env:list --environment production`). Il server di build non legge il `.env` locale.
 - **`platforms: ["android"]` va dichiarato**, altrimenti `eas update` prova a compilare anche
   il web e si ferma chiedendo `react-native-web`.
+
+**Modifiche di settembre 2026.** Otto richieste del committente, affrontate a gruppi.
+Fatto finora, revisione `0.0.10`:
+
+- *Campi per la S Pen*: note dell'attività a quattro righe, righe delle attività svolte a
+  due, tastiera che non compare da sola e pulsante per richiamarla. Vedi la sezione
+  sull'interfaccia. **Da collaudare sul tablet con la penna vera**: che la scrittura a mano
+  resti attiva con `showSoftInputOnFocus={false}` è quanto ci si aspetta dal comportamento
+  di sistema, non qualcosa che sia stato visto funzionare.
+- *Orari non modificabili*: ingresso e uscita li registra l'app. L'uscita è ora l'istante in
+  cui si preme «Concludi ispezione», non quello in cui compare il riepilogo: fra i due passa
+  il tempo di far firmare, e senza la correzione a mano quel divario sarebbe finito nel
+  documento senza rimedio. Contraddice il §6.4 della specifica, aggiornato di conseguenza.
+
+- *Voto e rotture di stock* (revisione `0.0.11`): due colonne nuove su `ispezioni`, `voto`
+  (1–5) e `rotture_stock_promo`. Entrambe nullable sul database, perché le ispezioni già
+  archiviate non le hanno e inventare un valore per una scheda firmata mesi fa sarebbe
+  peggio di lasciarla vuota; il voto è obbligatorio nell'app, che blocca la conclusione
+  finché manca. Il selettore sta nel riepilogo, sulla stessa schermata del pulsante che
+  blocca: farlo tornare indietro di una schermata per una cifra sarebbe stato un attrito
+  gratuito. **Nel PDF compare solo la cifra**, senza il giudizio a parole: quello vive
+  nell'app per confermare la scelta a chi la fa, mentre in un documento che gira per
+  uffici aggiungerebbe un'interpretazione dove serve un dato.
+
+Una bozza salvata da una versione precedente arriva senza i campi aggiunti dopo, quindi
+`leggiBozza` la fa passare da `normalizzaBozza`: senza, quei campi resterebbero `undefined`,
+e un `undefined` al posto di `null` fa fallire la conclusione di una scheda già firmata.
+
+Restano da fare, nell'ordine: visibilità dei punti vendita per ispettore (tabella nuova e
+policy), flusso di verifica per il destinatario CN, e per ultime le foto sulle attività —
+che richiedono un APK nuovo, non un `eas update`, perché portano un modulo nativo e il
+permesso `CAMERA`.
 
 ### La chiave di firma
 

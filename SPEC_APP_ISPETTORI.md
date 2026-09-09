@@ -154,6 +154,8 @@ create table ispezioni (
   firma_ispettore_path text,             -- path in Storage
   firma_responsabile_path text,
   nome_responsabile text,                -- chi firma per il PDV
+  voto smallint check (voto between 1 and 5),   -- giudizio sulla visita (2026)
+  rotture_stock_promo integer,           -- rotture di stock sulla promo in sala (2026)
   pdf_path text,
   stato stato_ispezione not null default 'bozza',
   created_at timestamptz not null default now(),
@@ -327,8 +329,8 @@ Login
 | Campo | Comportamento |
 |---|---|
 | PDV | Preselezionato, modificabile solo finché non ci sono righe compilate |
-| Ora ingresso | Auto-popolata all'apertura, **editabile** con time picker |
-| Ora uscita | Vuota, si popola alla conclusione, **editabile** |
+| Ora ingresso | Auto-popolata all'apertura, **non modificabile** (variato su richiesta del committente, settembre 2026) |
+| Ora uscita | Registrata alla pressione di «Concludi ispezione», **non modificabile** |
 | Ispettore | Auto-popolato dal profilo loggato, non editabile |
 | Data | Data corrente, editabile solo da admin |
 
@@ -390,8 +392,9 @@ Tasto **"CONCLUDI ISPEZIONE"**. Sequenza:
    - firma ispettore presente
    - firma responsabile presente **oppure** motivazione esplicita per l'assenza (campo testo)
 2. **Popolamento** `ora_uscita = now()`.
-3. **Schermata di conferma orari**: mostra ora ingresso e ora uscita, entrambe editabili,
-   con durata calcolata. Tasti "Modifica" e "Conferma e invia".
+3. **Schermata di conferma orari**: mostra ora ingresso e ora uscita in sola lettura, con
+   durata calcolata. Gli orari li registra l'app e non si correggono a mano: sono un dato
+   del documento, non una preferenza di chi lo compila.
 4. **Salvataggio** su Supabase, upload firme, stato → `conclusa`.
 5. **Generazione PDF** e upload su Storage.
 6. **Invio email** tramite Edge Function; stato → `inviata` o `errore_invio`.
@@ -416,6 +419,8 @@ Il PDF deve **replicare il modulo Excel attuale**, con:
   di scadenza tra parentesi se presenti)
 - se "Niente da rilevare": in luogo della tabella, la dicitura **NIENTE DA RILEVARE** ben visibile
 - blocco "Ho svolto le seguenti attività" con l'elenco puntato
+- blocco di chiusura con il **voto della visita** (la sola cifra da 1 a 5: il giudizio a
+  parole resta nell'app) e le rotture di stock promo sala, se rilevate
 - in fondo: le due firme come immagini, con nome ispettore e nome responsabile sotto
 - piè di pagina con numero ispezione e data/ora di generazione
 

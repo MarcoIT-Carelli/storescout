@@ -34,6 +34,9 @@ export type DatiScheda = {
   firmaResponsabileBase64: string | null;
   nomeResponsabile: string;
   motivoAssenzaFirma: string;
+  /** Voto della visita, da 1 a 5. Nel documento compare la sola cifra. */
+  voto: number | null;
+  rottureStockPromo: number | null;
 };
 
 const esc = (s: string) =>
@@ -108,6 +111,17 @@ export function htmlScheda(d: DatiScheda): string {
          <ul class="svolte">${d.svolte.map((s) => `<li>${esc(s)}</li>`).join('')}</ul>`
       : '';
 
+  // Il voto è la sola cifra: il giudizio a parole vive nell'app, per confermare la
+  // scelta a chi la fa, e in un documento che gira per uffici aggiungerebbe soltanto
+  // un'interpretazione dove serve un dato.
+  const chiusura =
+    d.voto !== null || d.rottureStockPromo !== null
+      ? `<div class="chiusura">
+          ${d.voto !== null ? `<div class="voto"><span class="etichettaChiusura">Voto della visita</span><span class="cifraVoto">${d.voto}<span class="suCinque"> / 5</span></span></div>` : ''}
+          ${d.rottureStockPromo !== null ? `<div class="rotture"><span class="etichettaChiusura">Rotture di stock promo sala</span><span class="valoreRotture">${d.rottureStockPromo}</span></div>` : ''}
+        </div>`
+      : '';
+
   const firma = (titolo: string, base64: string | null, nome: string, assenza?: string) => `
     <div class="firma">
       <div class="riquadro">
@@ -154,6 +168,18 @@ export function htmlScheda(d: DatiScheda): string {
   .svolte { margin: 6px 0 0; padding-left: 18px; }
   .svolte li { margin-bottom: 3px; }
 
+  .chiusura {
+    display: flex; gap: 14px; margin-top: 18px; page-break-inside: avoid;
+  }
+  .chiusura > div {
+    flex: 1; border: 1px solid #C9C9C4; padding: 8px 10px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .etichettaChiusura { font-size: 8.5pt; text-transform: uppercase; color: #6B6B66; letter-spacing: 0.4px; }
+  .cifraVoto { font-size: 17pt; font-weight: 800; }
+  .suCinque { font-size: 10pt; font-weight: 400; color: #6B6B66; }
+  .valoreRotture { font-size: 13pt; font-weight: 700; }
+
   .firme { display: flex; gap: 24px; margin-top: 26px; page-break-inside: avoid; }
   .firma { flex: 1; }
   .riquadro {
@@ -176,6 +202,7 @@ export function htmlScheda(d: DatiScheda): string {
   <h2>Attività rilevate</h2>
   ${attivita}
   ${svolte}
+  ${chiusura}
   <div class="firme">
     ${firma('Firma ispettore', d.firmaIspettoreBase64, d.ispettore)}
     ${firma(

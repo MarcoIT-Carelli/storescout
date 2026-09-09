@@ -58,6 +58,8 @@ export type Ispezione = {
   firma_responsabile_path: string | null;
   nome_responsabile: string | null;
   motivo_assenza_firma: string | null;
+  voto: number | null;
+  rotture_stock_promo: number | null;
   pdf_path: string | null;
   stato: StatoIspezione;
   created_at: string;

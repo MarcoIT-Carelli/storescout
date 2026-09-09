@@ -16,6 +16,7 @@ import { BannerStato, INATTIVO, type StatoOperazione } from '@/components/Banner
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Schermata } from '@/components/Schermata';
+import { GIUDIZIO, type Voto } from '@/components/SelettoreVoto';
 import { useListe } from '@/hooks/useListe';
 import { messaggioErrore } from '@/lib/errori';
 import { dataBreve, daDataISO, durata, ora } from '@/lib/format';
@@ -165,6 +166,15 @@ export default function Esito() {
           <Voce etichetta="Ingresso" valore={ora(ingresso)} />
           <Voce etichetta="Uscita" valore={uscita ? ora(uscita) : '—'} />
           <Voce etichetta="Durata" valore={uscita ? durata(ingresso, uscita) : '—'} />
+          {i.voto !== null ? (
+            <Voce
+              etichetta="Voto della visita"
+              valore={`${i.voto} / 5 — ${GIUDIZIO[i.voto as Voto] ?? ''}`.trim()}
+            />
+          ) : null}
+          {i.rotture_stock_promo !== null ? (
+            <Voce etichetta="Rotture stock promo" valore={String(i.rotture_stock_promo)} />
+          ) : null}
           {i.nome_responsabile ? <Voce etichetta="Firmato da" valore={i.nome_responsabile} /> : null}
           {i.motivo_assenza_firma ? (
             <Voce etichetta="Assenza firma" valore={i.motivo_assenza_firma} />

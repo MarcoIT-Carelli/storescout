@@ -41,6 +41,10 @@ export type Bozza = {
   svolte: RigaSvolta[];
   nome_responsabile: string;
   motivo_assenza_firma: string;
+  /** Voto complessivo della visita, da 1 a 5. Obbligatorio per concludere. */
+  voto: number | null;
+  /** Rotture di stock sulla promo in sala. Vuoto significa «non rilevato». */
+  rotture_stock_promo: number | null;
   /** URI locale del PNG della firma, prima dell'upload su Storage. */
   firma_ispettore_uri: string | null;
   firma_responsabile_uri: string | null;
@@ -84,9 +88,27 @@ export function nuovaBozza(ispettoreId: string, pdvId: string): Bozza {
     svolte: [],
     nome_responsabile: '',
     motivo_assenza_firma: '',
+    voto: null,
+    rotture_stock_promo: null,
     firma_ispettore_uri: null,
     firma_responsabile_uri: null,
     aggiornata: Date.now(),
+  };
+}
+
+/**
+ * Riporta alla forma corrente una bozza letta dal dispositivo.
+ *
+ * Le schede lasciate a metà sopravvivono agli aggiornamenti, quindi una bozza salvata
+ * da una versione precedente arriva senza i campi aggiunti dopo. Senza questo passaggio
+ * resterebbero `undefined`, e un `undefined` mandato a Postgres al posto di `null` fa
+ * fallire la conclusione di una scheda già firmata.
+ */
+export function normalizzaBozza(grezza: Partial<Bozza>): Bozza {
+  return {
+    ...(grezza as Bozza),
+    voto: grezza.voto ?? null,
+    rotture_stock_promo: grezza.rotture_stock_promo ?? null,
   };
 }
 

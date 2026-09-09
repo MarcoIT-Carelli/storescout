@@ -1,6 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 
-import type { Bozza } from '@/types/bozza';
+import { normalizzaBozza, type Bozza } from '@/types/bozza';
 
 /**
  * Archivio locale delle ispezioni in corso. Non è una sincronizzazione offline completa:
@@ -45,7 +45,7 @@ export async function salvaBozza(bozza: Bozza): Promise<void> {
 export async function leggiBozza(id: string): Promise<Bozza | null> {
   const d = await apri();
   const riga = await d.getFirstAsync<Riga>('select * from bozze where id = ?', id);
-  return riga ? (JSON.parse(riga.dati) as Bozza) : null;
+  return riga ? normalizzaBozza(JSON.parse(riga.dati) as Partial<Bozza>) : null;
 }
 
 export async function leggiBozze(ispettoreId: string): Promise<Bozza[]> {
@@ -54,7 +54,7 @@ export async function leggiBozze(ispettoreId: string): Promise<Bozza[]> {
     'select * from bozze where ispettore_id = ? order by aggiornata desc',
     ispettoreId,
   );
-  return righe.map((r) => JSON.parse(r.dati) as Bozza);
+  return righe.map((r) => normalizzaBozza(JSON.parse(r.dati) as Partial<Bozza>));
 }
 
 export async function eliminaBozza(id: string): Promise<void> {

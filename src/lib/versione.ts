@@ -10,7 +10,7 @@
  * La regola quindi è: `version` si alza solo quando si distribuisce un APK nuovo,
  * `REVISIONE` a ogni aggiornamento via rete.
  */
-export const REVISIONE = '0.0.9';
+export const REVISIONE = '0.0.11';
 
 /**
  * Che cosa è cambiato, per revisione. Compare una volta sola dopo l'aggiornamento.
@@ -20,6 +20,16 @@ export const REVISIONE = '0.0.9';
  * senza voci non mostra niente.
  */
 export const NOVITA: Record<string, string[]> = {
+  '0.0.11': [
+    'Prima di concludere devi dare un voto alla visita, da 1 a 5: lo trovi nel riepilogo, sopra i destinatari. Senza voto la scheda non si chiude.',
+    'In fondo alla scheda puoi indicare quante rotture di stock hai trovato sulla promo in sala.',
+    'Il voto e le rotture finiscono nel PDF e nell’export delle ispezioni.',
+  ],
+  '0.0.10': [
+    'Il campo delle note è più grande e la tastiera non compare più da sola: puoi scrivere direttamente con la penna. Se preferisci digitare, il tasto «Tastiera» dentro il campo la richiama.',
+    'Stessa cosa per le righe delle attività svolte, per la scadenza generica e per i campi delle firme.',
+    'Gli orari di ingresso e uscita non si modificano più a mano: li registra l’app. L’uscita è ora l’istante in cui premi «Concludi ispezione», non quello in cui apri il riepilogo.',
+  ],
   '0.0.9': [
     'Con il tablet in verticale le due firme ora si vedono una sotto l’altra: prima si schiacciavano una sull’altra ed era difficile firmare.',
     'Stessa correzione per destinatario, reparto e tipo di intervento nella scheda, e per il riepilogo dell’ispezione conclusa.',

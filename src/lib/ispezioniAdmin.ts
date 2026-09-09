@@ -118,6 +118,8 @@ const COLONNE = [
   'Ispettore',
   'Stato',
   'Esito',
+  'Voto',
+  'Rotture stock promo',
   'Destinatario',
   'Reparto',
   'Tipo intervento',
@@ -203,6 +205,8 @@ export async function esportaCsv(
       nomeIspettore.get(i.ispettore_id) ?? '',
       ETICHETTA_STATO[i.stato],
       i.niente_da_rilevare ? 'Niente da rilevare' : 'Con rilievi',
+      i.voto ?? '',
+      i.rotture_stock_promo ?? '',
     ];
     const svolteTesto = (svoltePerIspezione.get(i.id) ?? []).join(' · ');
     const attivitaIspezione = perIspezione.get(i.id) ?? [];

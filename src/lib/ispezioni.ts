@@ -45,6 +45,8 @@ export async function salvaTestata(bozza: Bozza): Promise<Ispezione> {
         ha_svolto_attivita: bozza.ha_svolto_attivita,
         nome_responsabile: bozza.nome_responsabile.trim() || null,
         motivo_assenza_firma: bozza.motivo_assenza_firma.trim() || null,
+        voto: bozza.voto,
+        rotture_stock_promo: bozza.rotture_stock_promo,
         stato: 'bozza' as const,
       },
       { onConflict: 'id' },
@@ -132,10 +134,11 @@ export function righePdf(bozza: Bozza, rif: Riferimenti): RigaPdf[] {
 }
 
 /**
- * Conclude l'ispezione: salva su Supabase, carica le firme, genera il PDF e lo archivia.
+ * Conclude l'ispezione: salva su Supabase, carica le firme, genera il PDF, lo archivia
+ * e lo spedisce.
  *
- * L'invio email non è compreso: dipende dalle credenziali SMTP Aruba, non ancora
- * disponibili (milestone 8). L'ispezione resta in stato `conclusa` e riprovabile.
+ * Un invio fallito non interrompe la conclusione: la scheda resta salvata, archiviata
+ * in PDF e riprovabile, perché un problema di rete non deve costare una compilazione.
  */
 export async function concludiIspezione(
   bozza: Bozza,
@@ -187,6 +190,8 @@ export async function concludiIspezione(
       : null,
     nomeResponsabile: bozza.nome_responsabile.trim(),
     motivoAssenzaFirma: bozza.motivo_assenza_firma.trim(),
+    voto: bozza.voto,
+    rottureStockPromo: bozza.rotture_stock_promo,
   };
 
   // expo-print ignora `@page size` e produce US Letter se non gli si passano le misure:
@@ -216,6 +221,8 @@ export async function concludiIspezione(
       ha_svolto_attivita: bozza.ha_svolto_attivita,
       nome_responsabile: bozza.nome_responsabile.trim() || null,
       motivo_assenza_firma: bozza.motivo_assenza_firma.trim() || null,
+      voto: bozza.voto,
+      rotture_stock_promo: bozza.rotture_stock_promo,
       firma_ispettore_path: firmaIspettorePath,
       firma_responsabile_path: firmaResponsabilePath,
       pdf_path: percorsoPdf,

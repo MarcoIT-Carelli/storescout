@@ -1,13 +1,13 @@
-import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Badge } from '@/components/Badge';
 import { BannerStato, INATTIVO, type StatoOperazione } from '@/components/BannerStato';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Schermata } from '@/components/Schermata';
+import { SelettoreVoto } from '@/components/SelettoreVoto';
 import { useAuth } from '@/hooks/useAuth';
 import { useBozza } from '@/hooks/useBozza';
 import { useListe } from '@/hooks/useListe';
@@ -32,12 +32,18 @@ export default function Riepilogo() {
   const [stato, setStato] = useState<StatoOperazione>(INATTIVO);
   const [inCorso, setInCorso] = useState(false);
 
-  // L'ora di uscita si popola all'ingresso in questa schermata e resta modificabile.
+  /**
+   * L'uscita è l'istante in cui si conclude, non quello in cui compare questo riepilogo:
+   * fra i due passa il tempo di far firmare, e con gli orari non più correggibili a mano
+   * fissarla qui vorrebbe dire archiviare un orario sbagliato senza rimedio. Qui si mostra
+   * soltanto l'ora corrente, riallineata ogni mezzo minuto perché il numero a schermo sia
+   * quello che verrà davvero salvato.
+   */
+  const [adesso, setAdesso] = useState(() => new Date());
   useEffect(() => {
-    if (bozza && !bozza.ora_uscita) {
-      modifica((b) => ({ ...b, ora_uscita: new Date().toISOString() }));
-    }
-  }, [bozza, modifica]);
+    const battito = setInterval(() => setAdesso(new Date()), 30_000);
+    return () => clearInterval(battito);
+  }, []);
 
   const problemi = useMemo(() => (bozza ? validaBozza(bozza) : []), [bozza]);
 
@@ -69,35 +75,17 @@ export default function Riepilogo() {
 
   const pdv = pdvPerId(bozza.pdv_id);
   const ingresso = new Date(bozza.ora_ingresso);
-  const uscita = bozza.ora_uscita ? new Date(bozza.ora_uscita) : new Date();
-
-  const cambiaOra = (quale: 'ingresso' | 'uscita') => {
-    if (Platform.OS !== 'android') return;
-    const attuale = quale === 'ingresso' ? ingresso : uscita;
-    DateTimePickerAndroid.open({
-      value: attuale,
-      mode: 'time',
-      is24Hour: true,
-      onChange: (evento, scelta) => {
-        if (evento.type !== 'set' || !scelta) return;
-        const nuova = new Date(attuale);
-        nuova.setHours(scelta.getHours(), scelta.getMinutes(), 0, 0);
-        modifica((b) =>
-          quale === 'ingresso'
-            ? { ...b, ora_ingresso: nuova.toISOString() }
-            : { ...b, ora_uscita: nuova.toISOString() },
-        );
-      },
-    });
-  };
+  const uscita = bozza.ora_uscita ? new Date(bozza.ora_uscita) : adesso;
 
   const concludi = async () => {
     if (!pdv || !profilo) return;
     setInCorso(true);
     await salvaSubito();
+    // L'orario di uscita nasce qui, non quando la schermata si è aperta.
+    const daConcludere = { ...bozza, ora_uscita: new Date().toISOString() };
     try {
       await concludiIspezione(
-        bozza,
+        daConcludere,
         pdv,
         profilo,
         {
@@ -125,8 +113,8 @@ export default function Riepilogo() {
             ORARI DELLA VISITA · {dataEstesa(ingresso).toUpperCase()}
           </Text>
           <View style={stili.orari}>
-            <Orario etichetta="Ingresso" valore={ora(ingresso)} onPress={() => cambiaOra('ingresso')} />
-            <Orario etichetta="Uscita" valore={ora(uscita)} onPress={() => cambiaOra('uscita')} />
+            <Orario etichetta="Ingresso" valore={ora(ingresso)} />
+            <Orario etichetta="Uscita" valore={ora(uscita)} />
             <View style={stili.durata}>
               <Text style={[testo.etichetta, { color: c.testoSecondario }]}>DURATA</Text>
               <Text style={[testo.sezione, { color: c.testo }]}>{durata(ingresso, uscita)}</Text>
@@ -146,6 +134,13 @@ export default function Riepilogo() {
           {bozza.ha_svolto_attivita ? (
             <Text style={[testo.corpo, { color: c.testo }]}>
               {bozza.svolte.filter((s) => s.descrizione.trim()).length} attività svolte dall’ispettore
+            </Text>
+          ) : null}
+          {bozza.rotture_stock_promo !== null ? (
+            <Text style={[testo.corpo, { color: c.testo }]}>
+              {bozza.rotture_stock_promo === 1
+                ? '1 rottura di stock promo sala'
+                : `${bozza.rotture_stock_promo} rotture di stock promo sala`}
             </Text>
           ) : null}
           <View style={stili.firmeStato}>
@@ -170,6 +165,16 @@ export default function Riepilogo() {
               }
             />
           </View>
+        </Card>
+
+        <Card>
+          <Text style={[testo.etichetta, { color: c.testoSecondario, marginBottom: spazio.md }]}>
+            VOTO DELLA VISITA
+          </Text>
+          <SelettoreVoto
+            valore={bozza.voto}
+            onChange={(voto) => modifica((b) => ({ ...b, voto }))}
+          />
         </Card>
 
         <Card>
@@ -250,22 +255,14 @@ export default function Riepilogo() {
   );
 }
 
-function Orario({ etichetta, valore, onPress }: { etichetta: string; valore: string; onPress: () => void }) {
+/** Gli orari li registra l'app: qui si leggono soltanto. */
+function Orario({ etichetta, valore }: { etichetta: string; valore: string }) {
   const c = useColori();
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        stili.orario,
-        { borderColor: c.bordo, backgroundColor: pressed ? c.superficieAlt : 'transparent' },
-      ]}
-      accessibilityRole="button"
-      accessibilityLabel={`Modifica ora di ${etichetta.toLowerCase()}`}
-    >
+    <View style={[stili.orario, { borderColor: c.bordo }]}>
       <Text style={[testo.etichetta, { color: c.testoSecondario }]}>{etichetta.toUpperCase()}</Text>
       <Text style={[testo.titolo, { color: c.testo }]}>{valore}</Text>
-      <Text style={[testo.etichetta, { color: c.testoSecondario, fontWeight: '400' }]}>tocca per modificare</Text>
-    </Pressable>
+    </View>
   );
 }
 

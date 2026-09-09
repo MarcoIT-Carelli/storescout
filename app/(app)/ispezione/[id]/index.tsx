@@ -1,9 +1,7 @@
-import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -75,22 +73,6 @@ export default function Scheda() {
   const ingresso = new Date(bozza.ora_ingresso);
   const righeCompilate = bozza.attivita.filter(rigaCompilata);
   const svolteCompilate = bozza.svolte.filter((s) => s.descrizione.trim().length > 0);
-
-  const cambiaOrario = () => {
-    if (Platform.OS !== 'android') return;
-    DateTimePickerAndroid.open({
-      value: ingresso,
-      mode: 'time',
-      is24Hour: true,
-      onChange: (evento, scelta) => {
-        if (evento.type === 'set' && scelta) {
-          const aggiornata = new Date(ingresso);
-          aggiornata.setHours(scelta.getHours(), scelta.getMinutes(), 0, 0);
-          modifica((b) => ({ ...b, ora_ingresso: aggiornata.toISOString() }));
-        }
-      },
-    });
-  };
 
   const spuntaNiente = (v: boolean) => {
     if (v && righeCompilate.length > 0) {
@@ -168,19 +150,15 @@ export default function Scheda() {
           <Text style={[testo.piccolo, { color: c.testoSecondario }]}>{dataEstesa(ingresso)}</Text>
         </View>
 
-        <Pressable
-          onPress={cambiaOrario}
-          style={({ pressed }) => [
-            stili.orario,
-            { borderColor: c.bordo, backgroundColor: pressed ? c.superficieAlt : 'transparent' },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel="Modifica ora di ingresso"
-        >
+        {/* Registrata all'apertura della scheda e non modificabile: l'orario di una
+            visita è un dato del documento, non una preferenza di chi lo compila. */}
+        <View style={[stili.orario, { borderColor: c.bordo }]}>
           <Text style={[testo.etichetta, { color: c.testoSecondario }]}>INGRESSO</Text>
           <Text style={[testo.sezione, { color: c.testo }]}>{ora(ingresso)}</Text>
-          <Text style={[testo.etichetta, { color: c.testoSecondario, fontWeight: '400' }]}>tocca per modificare</Text>
-        </Pressable>
+          <Text style={[testo.etichetta, { color: c.testoSecondario, fontWeight: '400' }]}>
+            registrata dall’app
+          </Text>
+        </View>
       </View>
 
       <ScrollView
@@ -278,6 +256,8 @@ export default function Scheda() {
                       svolte: b.svolte.map((x) => (x.id === s.id ? { ...x, descrizione: v } : x)),
                     }))
                   }
+                  righe={2}
+                  penna
                   placeholder={`Attività svolta ${i + 1}`}
                 />
                 <Pressable
@@ -302,6 +282,28 @@ export default function Scheda() {
             />
           </View>
         ) : null}
+
+        <View style={[stili.separatore, { backgroundColor: c.bordo }]} />
+
+        <View style={stili.blocco}>
+          <Text style={[testo.sezione, { color: c.testo }]}>Rotture di stock promo sala</Text>
+          <TextField
+            contenitore={stili.numerico}
+            value={bozza.rotture_stock_promo === null ? '' : String(bozza.rotture_stock_promo)}
+            onChangeText={(v) => {
+              // Solo cifre: la tastiera numerica su Android lascia passare separatori
+              // e segni che qui non vogliono dire niente.
+              const cifre = v.replace(/[^0-9]/g, '');
+              modifica((b) => ({
+                ...b,
+                rotture_stock_promo: cifre === '' ? null : Math.min(Number(cifre), 99999),
+              }));
+            }}
+            keyboardType="number-pad"
+            placeholder="0"
+            aiuto="Quante rotture di stock hai trovato sulla promo in sala. Lascia vuoto se non rilevato."
+          />
+        </View>
 
         <View style={[stili.separatore, { backgroundColor: c.bordo }]} />
 
@@ -368,6 +370,7 @@ const stili = StyleSheet.create({
   blocco: { gap: spazio.md },
   vuoto: { borderWidth: 1, borderStyle: 'dashed', borderRadius: raggio.md, padding: spazio.xl },
   separatore: { height: 1 },
+  numerico: { maxWidth: 200 },
   rigaSvolta: { flexDirection: 'row', alignItems: 'center', gap: spazio.sm },
   eliminaRiga: { width: TOCCO_MIN, height: TOCCO_MIN, alignItems: 'center', justifyContent: 'center' },
   scarta: { minHeight: TOCCO_MIN, justifyContent: 'center', alignItems: 'center' },

@@ -2,8 +2,8 @@ import type { Bozza } from '@/types/bozza';
 import { rigaCompilata } from '@/types/bozza';
 
 export type Problema = {
-  /** Schermata da aprire per correggere. */
-  dove: 'scheda' | 'firme';
+  /** Schermata da aprire per correggere. `riepilogo` è quella che già si sta guardando. */
+  dove: 'scheda' | 'firme' | 'riepilogo';
   messaggio: string;
 };
 
@@ -66,6 +66,10 @@ export function validaBozza(bozza: Bozza): Problema[] {
 
   if (bozza.firma_responsabile_uri && !bozza.nome_responsabile.trim()) {
     problemi.push({ dove: 'firme', messaggio: 'Manca il nome del responsabile che ha firmato.' });
+  }
+
+  if (bozza.voto === null) {
+    problemi.push({ dove: 'riepilogo', messaggio: 'Manca il voto della visita.' });
   }
 
   if (bozza.ora_uscita && new Date(bozza.ora_uscita) < new Date(bozza.ora_ingresso)) {

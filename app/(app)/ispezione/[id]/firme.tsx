@@ -74,6 +74,7 @@ export default function Firme() {
               value={bozza.nome_responsabile}
               onChangeText={(v) => modifica((b) => ({ ...b, nome_responsabile: v }))}
               placeholder="Chi firma per il punto vendita"
+              penna
               autoCapitalize="words"
             />
           </View>
@@ -87,6 +88,7 @@ export default function Firme() {
               onChangeText={(v) => modifica((b) => ({ ...b, motivo_assenza_firma: v }))}
               placeholder="es. responsabile assente, punto vendita chiuso"
               righe={2}
+              penna
               aiuto="Compila solo se il responsabile non può firmare."
             />
           </View>

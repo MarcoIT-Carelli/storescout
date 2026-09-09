@@ -119,7 +119,8 @@ export function SchedaAttivita({
         etichetta="Note"
         value={riga.note}
         onChangeText={(v) => cambia({ note: v })}
-        righe={2}
+        righe={4}
+        penna
         editable={!disabilitato}
         placeholder="Descrivi che cosa hai rilevato"
       />
@@ -176,6 +177,7 @@ export function SchedaAttivita({
             value={riga.scadenza_testo}
             onChangeText={(v) => cambia({ scadenza_testo: v, scadenza_data: null })}
             placeholder="es. prossimo ordine"
+            penna
             editable={!disabilitato}
           />
         ) : (
@@ -203,6 +205,8 @@ export function SchedaAttivita({
             value={riga.scadenza_note}
             onChangeText={(v) => cambia({ scadenza_note: v })}
             placeholder="es. entro apertura, urgente"
+            righe={2}
+            penna
             editable={!disabilitato}
           />
         ) : null}
