@@ -392,6 +392,17 @@ già dall'indirizzo del punto vendita, e un estratto sarebbe la stessa visita du
 regola non guarda il nome ma il flag `richiede_verifica`, lo stesso che governa il «da
 chiudere».
 
+**L'estratto si genera solo per chi può riceverlo**, cioè per gli uffici con un indirizzo
+email, e **senza le firme**. Le due cose insieme sono ciò che tiene accettabile il tempo di
+chiusura: le firme sono due immagini da rendere per ogni ufficio, e con cinque destinatari
+su sette ancora senza indirizzo si stavano generando documenti che nessuno avrebbe mai
+ricevuto, con l'ispettore fermo ad aspettare in negozio.
+
+I link firmati delle foto durano un'ora per le miniature, che restano a schermo finché la
+scheda è aperta, ma **l'apertura a schermo intero ne chiede uno nuovo al momento del
+tocco**: riusare quello della miniatura, generato magari mezz'ora prima, restituisce un
+`400 invalid JWT` alla seconda apertura.
+
 Il percorso di un estratto è quello del PDF completo più l'id del destinatario
 (`percorsoEstratto`): l'uuid invece del nome perché «UFFICIO MKTG» ha uno spazio dentro e
 i nomi si rinominano. Così la Edge Function ricostruisce il percorso da sé, **senza una

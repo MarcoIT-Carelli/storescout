@@ -377,7 +377,15 @@ function FotoDellaRiga({ tutte, attivitaId }: { tutte: FotoArchiviata[]; attivit
       {percorsi.map((f) => (
         <Pressable
           key={f.path}
-          onPress={() => url[f.path] && Linking.openURL(url[f.path])}
+          // Un link nuovo a ogni apertura: quello della miniatura può essere lì da
+          // prima che l'ispettore si mettesse a leggere la scheda.
+          onPress={async () => {
+            try {
+              await Linking.openURL(await urlFoto(f.path, 300));
+            } catch {
+              // La miniatura resta comunque a schermo: non vale un errore a tutta pagina.
+            }
+          }}
           accessibilityRole="button"
           accessibilityLabel={`Apri la foto ${f.ordine + 1}`}
           style={({ pressed }) => [

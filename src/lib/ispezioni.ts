@@ -284,6 +284,10 @@ export async function concludiIspezione(
   for (const destinatarioId of uffici) {
     const ufficio = rif.destinatari.find((d) => d.id === destinatarioId);
     if (!ufficio || ufficio.richiede_verifica) continue;
+    // Senza indirizzo quell'estratto non partirà mai: generarlo vuol dire far aspettare
+    // l'ispettore in negozio per un documento che nessuno riceverà. Oggi sono cinque
+    // destinatari su sette, e si vedeva tutto nel tempo di chiusura.
+    if (!ufficio.email) continue;
 
     onAvanzamento({ fase: 'pdf', messaggio: `Preparazione della copia per ${ufficio.nome}…` });
 
@@ -297,6 +301,12 @@ export async function concludiIspezione(
         svolte: [],
         voto: null,
         rottureStockPromo: null,
+        // Le firme restano sul documento della visita, che è quello che le porta.
+        // Nell'estratto sono due immagini da rendere per ogni ufficio — la parte più
+        // lenta della generazione — su un foglio che dice a un ufficio che cosa fare,
+        // non che cosa è stato attestato.
+        firmaIspettoreBase64: null,
+        firmaResponsabileBase64: null,
         estrattoPer: ufficio.nome,
       }),
       base64: false,

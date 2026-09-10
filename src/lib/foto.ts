@@ -185,9 +185,17 @@ export function dimenticaFoto(foto: FotoLocale[]): void {
   }
 }
 
-/** Link temporaneo per riaprire una foto archiviata. */
-export async function urlFoto(percorso: string): Promise<string> {
-  const { data, error } = await supabase.storage.from('foto').createSignedUrl(percorso, 300);
+/**
+ * Link temporaneo per una foto archiviata.
+ *
+ * `secondi` è generoso per le miniature, che restano a schermo finché la scheda è
+ * aperta: con una scadenza corta, chi si ferma a leggere si ritrova le immagini rotte
+ * senza aver fatto niente. Per l'apertura a schermo intero se ne chiede invece uno
+ * nuovo al momento del tocco — riusare quello della miniatura, generato magari mezz'ora
+ * prima, è il modo sicuro di prendersi un «invalid JWT».
+ */
+export async function urlFoto(percorso: string, secondi = 3600): Promise<string> {
+  const { data, error } = await supabase.storage.from('foto').createSignedUrl(percorso, secondi);
   if (error) throw error;
   return data.signedUrl;
 }
