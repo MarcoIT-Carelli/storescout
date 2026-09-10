@@ -19,6 +19,15 @@ export function messaggioErrore(e: unknown): string {
     return 'Troppi tentativi ravvicinati. Riprova fra qualche minuto.';
   if (t.includes('network request failed') || t.includes('fetch failed') || t.includes('timeout'))
     return 'Connessione assente. I dati inseriti restano salvati sul dispositivo.';
+  // Errori di configurazione dello Storage. Chi li legge è in negozio e non può farci
+  // niente, ma deve poter riferire qualcosa di utile a chi invece può.
+  if (t.includes('bucket not found'))
+    return 'Archivio dei file non configurato sul server: segnala all’amministratore che manca un bucket su Supabase. La scheda resta salvata sul dispositivo.';
+  if (t.includes('object not found'))
+    return 'Un file allegato non è stato trovato sul server. La scheda resta salvata sul dispositivo.';
+  if (t.includes('payload too large') || t.includes('entity too large'))
+    return 'Il file è troppo grande per essere caricato. Elimina qualche foto e riprova.';
+
   if (t.includes('row-level security') || t.includes('violates row-level'))
     return 'Non hai i permessi per questa operazione.';
   if (t.includes('jwt') || t.includes('token'))
