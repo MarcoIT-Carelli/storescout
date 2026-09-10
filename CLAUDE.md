@@ -485,6 +485,27 @@ Il file va rigenerato, non modificato a mano. Serve un data URI perché expo-pri
 l'HTML sul dispositivo, spesso senza rete: un riferimento a file o a URL non verrebbe
 risolto. Il marchio StoreScout resta l'identità dell'app, non del documento.
 
+### L'update che non aggiorna, terza volta
+
+`07_password_cambiata.sql`. Dopo il cambio password l'app spegneva `deve_cambiare_password`
+con un update diretto su `profili`, ma quella policy è riservata agli amministratori: la
+scrittura veniva rifiutata **in silenzio**, perché PostgREST risponde «fatto» anche quando
+non tocca una riga. Lo stato in memoria veniva aggiornato lo stesso, quindi sul momento
+sembrava funzionare; al riavvio successivo il flag era ancora acceso.
+
+Il risultato era che **ogni ispettore a cui veniva reimpostata la password restava chiuso
+nella schermata di cambio, per sempre**, senza via d'uscita. Non era emerso prima perché
+l'unico account provato era un amministratore, per il quale l'update passa.
+
+Allargare la policy non era una strada: **le policy non distinguono fra colonne**, e
+lasciar scrivere un ispettore sul proprio profilo gli permetterebbe di promuoversi ad
+amministratore. Come per `chiudi_verifica`, la scrittura passa da una funzione
+`security definer` che sa fare quella sola cosa, sul solo profilo di chi la chiama.
+
+È lo stesso inciampo già visto su `storage.objects` e su `ispezioni`, ed è la terza volta:
+**quando una scrittura conta, va chiesto indietro l'esito** — `.select()` sulle query,
+il valore di ritorno sulle funzioni — e va detto a schermo se non ha toccato niente.
+
 ### Password: si gestiscono nell'app, non per email
 
 **La posta serve a consegnare le schede, non a far entrare le persone.** Le due strade

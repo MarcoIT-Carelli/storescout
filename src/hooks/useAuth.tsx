@@ -104,7 +104,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
 
       if (profilo?.deve_cambiare_password) {
-        await supabase.from('profili').update({ deve_cambiare_password: false }).eq('id', profilo.id);
+        // Da una funzione e non da un update: la policy di `profili` è riservata agli
+        // amministratori, e allargarla aprirebbe l'intera riga — un ispettore potrebbe
+        // promuoversi da sé, perché le policy non distinguono fra colonne.
+        //
+        // L'update diretto che c'era prima veniva rifiutato in silenzio: PostgREST
+        // risponde «fatto» senza toccare niente, l'app aggiornava il proprio stato in
+        // memoria e al riavvio successivo il flag era ancora acceso. Ogni ispettore a
+        // cui veniva reimpostata la password restava chiuso nella schermata di cambio.
+        const { data, error } = await supabase.rpc('password_cambiata');
+        if (error) throw error;
+        if (data !== true) {
+          throw new Error(
+            'La password è stata cambiata, ma il server non ha registrato la conferma. Segnala all’amministratore che manca la funzione password_cambiata.',
+          );
+        }
         setProfilo({ ...profilo, deve_cambiare_password: false });
       }
     },
