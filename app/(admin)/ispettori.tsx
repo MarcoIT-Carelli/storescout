@@ -35,6 +35,13 @@ type Modulo = { nome: string; cognome: string; email: string; ruolo: RuoloUtente
 
 const MODULO_VUOTO: Modulo = { nome: '', cognome: '', email: '', ruolo: 'ispettore', password: '' };
 
+/**
+ * Precompilato nel modulo di un ispettore nuovo, e cancellabile: gli account sono
+ * tutti su questo dominio, e farlo digitare ogni volta su un tablet è un invito al
+ * refuso — un indirizzo sbagliato si scopre quando quell'ispettore non riesce a entrare.
+ */
+const DOMINIO_AZIENDALE = '@carellidistribuzione.it';
+
 export default function Ispettori() {
   const c = useColori();
   const { profilo: io } = useAuth();
@@ -424,7 +431,14 @@ export default function Ispettori() {
                 placeholder="nome.cognome@carellidistribuzione.it"
                 autoCapitalize="none"
                 keyboardType="email-address"
-                errore={modulo.email.length > 0 && !emailValida ? 'Indirizzo non valido.' : undefined}
+                aiuto="Il dominio è già scritto: tocca prima della chiocciola e aggiungi il nome."
+                errore={
+                  // Appena aperto il modulo c'è solo il dominio, che email valida non è:
+                  // segnalarlo come errore vorrebbe dire aprire con una riga rossa già lì.
+                  modulo.email.length > 0 && modulo.email !== DOMINIO_AZIENDALE && !emailValida
+                    ? 'Indirizzo non valido.'
+                    : undefined
+                }
               />
               <Select
                 etichetta="Ruolo"
@@ -476,7 +490,7 @@ export default function Ispettori() {
             onPress={() => {
               chiudi();
               setNuovo(true);
-              setModulo({ ...MODULO_VUOTO, password: passwordCasuale() });
+              setModulo({ ...MODULO_VUOTO, email: DOMINIO_AZIENDALE, password: passwordCasuale() });
             }}
           />
         )}
