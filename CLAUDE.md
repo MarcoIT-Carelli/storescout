@@ -364,6 +364,35 @@ e un `undefined` al posto di `null` fa fallire la conclusione di una scheda già
   `ispezione_foto` tiene anche il peso in byte. Chiederlo allo Storage foto per foto al
   momento dell'invio vorrebbe dire scoprire il problema quando è troppo tardi.
 
+### Il PDF non è uno solo
+
+Dalla revisione `1.1.3` la conclusione produce **un documento completo più un estratto per
+ogni ufficio** toccato dalle attività. L'ufficio tecnico non ha motivo di leggere le
+questioni del marketing, e viceversa.
+
+- **La scheda completa** va al punto vendita, ai due indirizzi in copia fissa, all'ispettore
+  e ai destinatari marcati `richiede_verifica`. È il documento della visita, con le firme:
+  frammentarlo per tutti vorrebbe dire che nessuno conserva più la scheda firmata intera.
+- **L'estratto** va al singolo ufficio, con le sole righe sue, le foto di quelle righe, e la
+  dicitura «Estratto per X» in testata — due persone che confrontano lo stesso numero di
+  ispezione devono capire perché vedono righe diverse. Voto, rotture di stock e attività
+  svolte restano fuori: riguardano la gestione del negozio, non l'intervento richiesto.
+
+**Servono mail separate, non una sola con più allegati.** Finché il messaggio è uno, chi è
+in copia apre anche gli allegati degli altri e la separazione è solo apparente.
+
+**CN resta fuori dagli estratti** perché è il capo negozio: la scheda completa gli arriva
+già dall'indirizzo del punto vendita, e un estratto sarebbe la stessa visita due volte. La
+regola non guarda il nome ma il flag `richiede_verifica`, lo stesso che governa il «da
+chiudere».
+
+Il percorso di un estratto è quello del PDF completo più l'id del destinatario
+(`percorsoEstratto`): l'uuid invece del nome perché «UFFICIO MKTG» ha uno spazio dentro e
+i nomi si rinominano. Così la Edge Function ricostruisce il percorso da sé, **senza una
+tabella che lo registri**. Se un estratto manca, quella mail viene saltata e il nome
+finisce in `estrattiFalliti`: la scheda completa è già partita, e non deve essere annullata
+da un allegato che non si trova.
+
 Resta da fare: nulla dei gruppi richiesti. Prima del rilascio — che richiedono un APK nuovo, non un `eas update`, perché portano un modulo
 nativo e il permesso `CAMERA`. Il rilascio è previsto per la settimana del 15 settembre
 2026, e le foto entrano in quell'APK: distribuirlo a mano su ogni tablet è un giro che

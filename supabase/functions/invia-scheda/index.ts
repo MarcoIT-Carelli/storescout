@@ -57,7 +57,10 @@ function daDataISO(s: string): Date {
   return new Date(a, m - 1, g);
 }
 
-type RigaAttivita = { destinatari: { nome: string; email: string | null } | null };
+type RigaAttivita = {
+  id: string;
+  destinatari: { id: string; nome: string; email: string | null; richiede_verifica: boolean } | null;
+};
 
 /**
  * Tetto agli allegati del messaggio, PDF e foto insieme.
@@ -69,7 +72,7 @@ type RigaAttivita = { destinatari: { nome: string; email: string | null } | null
  */
 const LIMITE_ALLEGATI_BYTE = 15 * 1024 * 1024;
 
-type FotoArchiviata = { path: string; byte: number; ordine: number };
+type FotoArchiviata = { path: string; byte: number; ordine: number; attivita_id: string };
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
@@ -124,12 +127,36 @@ Deno.serve(async (req) => {
 
   const { data: attivita } = await servizio
     .from('ispezione_attivita')
-    .select('destinatari(nome, email)')
+    .select('id, destinatari(id, nome, email, richiede_verifica)')
     .eq('ispezione_id', ispezioneId);
+
+  /**
+   * Gli uffici a cui spetta un estratto: quelli assegnatari di almeno un'attività, con
+   * un indirizzo, e non marcati «da verificare».
+   *
+   * L'esclusione riguarda oggi CN, che è il capo negozio: la scheda completa gli arriva
+   * già attraverso l'indirizzo del punto vendita, e mandargli anche un estratto sarebbe
+   * la stessa visita raccontata due volte.
+   */
+  const uffici = new Map<string, { nome: string; email: string }>();
+  // Una foto sta su una riga attività, non su un ufficio: questa mappa fa il ponte,
+  // così ogni estratto porta con sé soltanto gli scatti delle proprie righe.
+  const ufficioDellAttivita = new Map<string, string>();
+
+  for (const riga of (attivita ?? []) as RigaAttivita[]) {
+    const d = riga.destinatari;
+    if (!d) continue;
+    if (d.email && !d.richiede_verifica) uffici.set(d.id, { nome: d.nome, email: d.email });
+    ufficioDellAttivita.set(riga.id, d.id);
+  }
 
   // Destinatari: il punto vendita, gli indirizzi fissi, l'ispettore e gli uffici a cui
   // sono assegnate le attività. Deduplicati e senza rimbalzare sul mittente stesso.
+  // In copia sulla scheda completa restano i destinatari che l'estratto non lo ricevono,
+  // cioè quelli marcati «da verificare»: gli altri hanno la propria mail con la propria
+  // copia, e lasciarli anche qui vanificherebbe la separazione.
   const emailAttivita = ((attivita ?? []) as RigaAttivita[])
+    .filter((r) => r.destinatari?.richiede_verifica)
     .map((r) => r.destinatari?.email)
     .filter((e): e is string => Boolean(e));
 
@@ -173,7 +200,7 @@ Deno.serve(async (req) => {
   // la riga descrive a parole.
   const { data: fotoRighe } = await servizio
     .from('ispezione_foto')
-    .select('path, byte, ordine')
+    .select('path, byte, ordine, attivita_id')
     .eq('ispezione_id', ispezioneId)
     .order('ordine');
 
@@ -222,7 +249,13 @@ Deno.serve(async (req) => {
      * e chi lo riceve deve sapere che cosa manca.
      */
     let pesoAllegati = bytesPdf.byteLength;
-    const allegatiFoto: { filename: string; content: string; encoding: 'base64'; contentType: string }[] = [];
+    const allegatiFoto: {
+      filename: string;
+      content: string;
+      encoding: 'base64';
+      contentType: string;
+      perUfficio: string | undefined;
+    }[] = [];
     let omesse = 0;
 
     for (const [indice, f] of foto.entries()) {
@@ -244,6 +277,7 @@ Deno.serve(async (req) => {
         content: encodeBase64(bytesFoto),
         encoding: 'base64',
         contentType: 'image/jpeg',
+        perUfficio: ufficioDellAttivita.get(f.attivita_id),
       });
     }
 
@@ -287,9 +321,69 @@ Deno.serve(async (req) => {
           encoding: 'base64' as const,
           contentType: 'application/pdf',
         },
-        ...allegatiFoto,
+        ...allegatiFoto.map(({ perUfficio: _, ...allegato }) => allegato),
       ],
     });
+    /**
+     * Poi un messaggio per ufficio, ciascuno con il suo estratto.
+     *
+     * Mail separate e non una sola con più allegati: finché il messaggio è uno, chi è
+     * in copia apre anche gli allegati degli altri, e la separazione sarebbe solo
+     * apparente.
+     *
+     * Il percorso dell'estratto si ricostruisce dal nome del PDF completo più l'id del
+     * destinatario, la stessa regola che l'app usa per salvarlo.
+     */
+    const estrattiInviati: string[] = [];
+    const estrattiFalliti: string[] = [];
+
+    for (const [destinatarioId, ufficio] of uffici) {
+      const percorso = ispezione.pdf_path.replace(/\.pdf$/, `_${destinatarioId}.pdf`);
+      try {
+        const { data: estratto, error: erroreEstratto } = await servizio.storage
+          .from('schede')
+          .download(percorso);
+        if (erroreEstratto || !estratto) throw new Error(erroreEstratto?.message ?? 'estratto assente');
+
+        const suoiAllegati = allegatiFoto
+          .filter((a) => a.perUfficio === destinatarioId)
+          .map(({ perUfficio: _, ...allegato }) => allegato);
+
+        await client.send({
+          from: `StoreScout <${SMTP_FROM}>`,
+          to: [ufficio.email],
+          subject: `${oggetto} — ${ufficio.nome}`,
+          content: [
+            `Scheda attività ispettore n. ${ispezione.numero} — estratto per ${ufficio.nome}`,
+            '',
+            `Punto vendita: ${pdv.codice} — ${pdv.citta}, ${pdv.indirizzo}`,
+            `Data: ${dataBreve(dataIspezione)}`,
+            `Ispettore: ${nomeIspettore}`,
+            '',
+            'In allegato le sole attività assegnate a questo ufficio.',
+            '',
+            '— Messaggio generato automaticamente da StoreScout.',
+          ].join('
+'),
+          attachments: [
+            {
+              filename: `Scheda_${ispezione.numero}_${pdv.codice}_${ufficio.nome.replace(/[^A-Za-z0-9]+/g, '_')}.pdf`,
+              content: encodeBase64(new Uint8Array(await estratto.arrayBuffer())),
+              encoding: 'base64' as const,
+              contentType: 'application/pdf',
+            },
+            ...suoiAllegati,
+          ],
+        });
+        estrattiInviati.push(ufficio.nome);
+      } catch (e) {
+        // Un estratto che non parte non deve annullare la scheda completa, che è già
+        // arrivata: si registra il nome e lo si dice a chi ha concluso l'ispezione.
+        estrattiFalliti.push(ufficio.nome);
+        console.error(`Estratto per ${ufficio.nome} non inviato:`, e);
+      }
+    }
+
     await client.close();
 
     await registra('inviata', null);
@@ -301,6 +395,8 @@ Deno.serve(async (req) => {
       tentativi,
       foto: allegatiFoto.length,
       fotoOmesse: omesse,
+      estratti: estrattiInviati,
+      estrattiFalliti,
     });
   } catch (e) {
     const messaggio = e instanceof Error ? e.message : String(e);

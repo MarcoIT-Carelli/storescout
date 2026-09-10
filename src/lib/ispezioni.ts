@@ -124,15 +124,36 @@ export function testoScadenza(r: {
   return note ? `${base} (${note})` : base;
 }
 
-export function righePdf(bozza: Bozza, rif: Riferimenti): RigaPdf[] {
-  return bozza.attivita.filter(rigaCompilata).map((r) => ({
+/**
+ * Righe da stampare, eventualmente le sole di un destinatario.
+ *
+ * Con `soloDestinatario` si ottiene l'estratto per un ufficio: quello che gli si manda
+ * contiene i suoi interventi e nient'altro, perché l'ufficio tecnico non ha motivo di
+ * leggere le questioni del marketing.
+ */
+export function righePdf(bozza: Bozza, rif: Riferimenti, soloDestinatario?: string): RigaPdf[] {
+  return bozza.attivita
+    .filter(rigaCompilata)
+    .filter((r) => !soloDestinatario || r.destinatario_id === soloDestinatario)
+    .map((r) => ({
     destinatario: nomeDi(rif.destinatari, r.destinatario_id),
     reparto: nomeDi(rif.reparti, r.reparto_id),
     tipoIntervento: nomeDi(rif.tipiIntervento, r.tipo_intervento_id),
-    note: r.note.trim(),
-    scadenza: testoScadenza(r),
-    foto: r.foto.length,
-  }));
+      note: r.note.trim(),
+      scadenza: testoScadenza(r),
+      foto: r.foto.length,
+    }));
+}
+
+/**
+ * Percorso dell'estratto destinato a un ufficio.
+ *
+ * L'id del destinatario invece del nome: «UFFICIO MKTG» ha uno spazio dentro e un nome
+ * si può rinominare, mentre l'uuid è stabile e sicuro come nome di file. La Edge
+ * Function ricostruisce lo stesso percorso senza bisogno di una tabella che lo registri.
+ */
+export function percorsoEstratto(base: string, destinatarioId: string): string {
+  return base.replace(/\.pdf$/, `_${destinatarioId}.pdf`);
 }
 
 /**
@@ -246,6 +267,52 @@ export async function concludiIspezione(
     upsert: true,
   });
   if (caricamento.error) throw caricamento.error;
+
+  /**
+   * Un estratto per ogni ufficio toccato dalla scheda.
+   *
+   * Ne restano fuori i destinatari marcati «da verificare» — oggi CN, che è il capo
+   * negozio: quello la scheda completa la riceve già come punto vendita, e mandargliene
+   * anche un pezzo sarebbe la stessa cosa due volte.
+   */
+  const uffici = new Set(
+    (bozza.niente_da_rilevare ? [] : bozza.attivita.filter(rigaCompilata))
+      .map((r) => r.destinatario_id)
+      .filter((id): id is string => Boolean(id)),
+  );
+
+  for (const destinatarioId of uffici) {
+    const ufficio = rif.destinatari.find((d) => d.id === destinatarioId);
+    if (!ufficio || ufficio.richiede_verifica) continue;
+
+    onAvanzamento({ fase: 'pdf', messaggio: `Preparazione della copia per ${ufficio.nome}…` });
+
+    const righeUfficio = righePdf(bozza, rif, destinatarioId);
+    const { uri: uriEstratto } = await Print.printToFileAsync({
+      html: htmlScheda({
+        ...dati,
+        righe: righeUfficio,
+        // Fuori dall'estratto: riguardano la gestione del negozio, non l'intervento
+        // che questo ufficio deve fare.
+        svolte: [],
+        voto: null,
+        rottureStockPromo: null,
+        estrattoPer: ufficio.nome,
+      }),
+      base64: false,
+      width: 595,
+      height: 842,
+    });
+
+    const bytesEstratto = await new File(uriEstratto).bytes();
+    const caricamentoEstratto = await supabase.storage
+      .from('schede')
+      .upload(percorsoEstratto(percorsoPdf, destinatarioId), bytesEstratto, {
+        contentType: 'application/pdf',
+        upsert: true,
+      });
+    if (caricamentoEstratto.error) throw caricamentoEstratto.error;
+  }
 
   const { data: conclusa, error } = await supabase
     .from('ispezioni')

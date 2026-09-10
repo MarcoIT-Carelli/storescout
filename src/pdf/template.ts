@@ -39,6 +39,17 @@ export type DatiScheda = {
   /** Voto della visita, da 1 a 5. Nel documento compare la sola cifra. */
   voto: number | null;
   rottureStockPromo: number | null;
+  /**
+   * Nome dell'ufficio a cui questo documento è destinato.
+   *
+   * Quando è valorizzato il PDF è un estratto: contiene le sole righe assegnate a
+   * quell'ufficio, e lo dichiara in testata — due persone che confrontano lo stesso
+   * numero di ispezione devono capire perché vedono righe diverse.
+   *
+   * Voto, rotture di stock e attività svolte restano fuori dall'estratto: riguardano
+   * la gestione del punto vendita, non l'intervento che quell'ufficio deve fare.
+   */
+  estrattoPer?: string | null;
 };
 
 const esc = (s: string) =>
@@ -53,6 +64,7 @@ export function htmlScheda(d: DatiScheda): string {
       <div class="titoli">
         <h1>SCHEDA ATTIVITÀ ISPETTORE</h1>
         <p class="sottotitolo">Carelli Distribuzione — Area Vendite</p>
+        ${d.estrattoPer ? `<p class="estratto">Estratto per ${esc(d.estrattoPer)}</p>` : ''}
       </div>
       <div class="numero">${d.numero ? `N. ${d.numero}` : ''}</div>
     </div>`;
@@ -85,10 +97,10 @@ export function htmlScheda(d: DatiScheda): string {
     <table class="attivita">
       <thead>
         <tr>
-          <th style="width:15%">Destinatario</th>
+          ${d.estrattoPer ? '' : '<th style="width:15%">Destinatario</th>'}
           <th style="width:15%">Reparto</th>
           <th style="width:18%">Tipo intervento</th>
-          <th style="width:34%">Note</th>
+          <th style="width:${d.estrattoPer ? '49' : '34'}%">Note</th>
           <th style="width:18%">Scadenza</th>
         </tr>
       </thead>
@@ -96,7 +108,7 @@ export function htmlScheda(d: DatiScheda): string {
         ${d.righe
           .map(
             (r) => `<tr>
-              <td>${esc(r.destinatario)}</td>
+              ${d.estrattoPer ? '' : `<td>${esc(r.destinatario)}</td>`}
               <td>${esc(r.reparto)}</td>
               <td>${esc(r.tipoIntervento)}</td>
               <td class="note">${esc(r.note)}${r.foto > 0 ? `<span class="conFoto">${r.foto === 1 ? '1 foto allegata' : `${r.foto} foto allegate`}</span>` : ''}</td>
@@ -147,6 +159,10 @@ export function htmlScheda(d: DatiScheda): string {
   .titoli { flex: 1; }
   h1 { font-size: 15pt; margin: 0; letter-spacing: 0.4px; }
   .sottotitolo { margin: 2px 0 0; font-size: 9pt; color: #6B6B66; }
+  .estratto {
+    margin: 4px 0 0; font-size: 9pt; font-weight: 700; letter-spacing: 0.3px;
+    border: 1px solid #111111; padding: 2px 6px; display: inline-block;
+  }
   .numero { font-size: 11pt; font-weight: 700; }
 
   table { width: 100%; border-collapse: collapse; margin-top: 12px; }

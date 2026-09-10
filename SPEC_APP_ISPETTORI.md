@@ -462,6 +462,12 @@ Formato A4, margini 15mm. Font di sistema, nessun font esterno da scaricare.
 **Corpo:** testo breve con PDV, data, ispettore, orari, numero di attività rilevate.
 PDF in allegato.
 
+**Estratti per ufficio (2026).** Oltre alla mail sopra, che porta la scheda completa, ogni
+destinatario attività con un indirizzo riceve **una mail separata** con un PDF contenente
+le sole righe a lui assegnate e le relative foto. Ne sono esclusi i destinatari marcati
+`richiede_verifica` (oggi CN, il capo negozio), che la scheda completa la ricevono già
+attraverso l'indirizzo del punto vendita.
+
 ### 8.2 Configurazione SMTP Aruba
 
 ```
