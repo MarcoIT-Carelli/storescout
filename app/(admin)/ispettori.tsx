@@ -7,6 +7,7 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { ForzaPassword } from '@/components/ForzaPassword';
 import { ConfermaInLinea } from '@/components/ConfermaInLinea';
+import { SceltaMultipla } from '@/components/SceltaMultipla';
 import { Schermata } from '@/components/Schermata';
 import { Select } from '@/components/Select';
 import { TextField } from '@/components/TextField';
@@ -91,9 +92,13 @@ export default function Ispettori() {
     return p ? `${p.codice} — ${p.citta}` : 'Punto vendita non disponibile';
   };
 
-  const daAggiungere = liste.pdv
-    .filter((p) => !pdvScelti.includes(p.id))
-    .map((p) => ({ id: p.id, nome: `${p.codice} — ${p.citta}` }));
+  // Tutti, non i soli mancanti: nella finestra a spunte quelli già assegnati vanno
+  // visti come tali, altrimenti non si potrebbero togliere da lì.
+  const tuttiIPdv = liste.pdv.map((p) => ({
+    id: p.id,
+    nome: `${p.codice} — ${p.citta}`,
+    dettaglio: `${p.indirizzo} · ${p.ragione_sociale}`,
+  }));
 
   const emailValida = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(modulo.email.trim());
   const puoCreare =
@@ -251,9 +256,9 @@ export default function Ispettori() {
                     ) : (
                       <BloccoPuntiVendita
                         assegnati={assegnatiOrdinati}
-                        daAggiungere={daAggiungere}
+                        tutti={tuttiIPdv}
                         nomeDi={nomePdv}
-                        onAggiungi={(id) => setPdvScelti((p) => [...p, id])}
+                        onCambia={setPdvScelti}
                         onTogli={(id) => setPdvScelti((p) => p.filter((x) => x !== id))}
                       />
                     )}
@@ -439,9 +444,9 @@ export default function Ispettori() {
               {modulo.ruolo === 'admin' ? null : (
                 <BloccoPuntiVendita
                   assegnati={assegnatiOrdinati}
-                  daAggiungere={daAggiungere}
+                  tutti={tuttiIPdv}
                   nomeDi={nomePdv}
-                  onAggiungi={(id) => setPdvScelti((p) => [...p, id])}
+                  onCambia={setPdvScelti}
                   onTogli={(id) => setPdvScelti((p) => p.filter((x) => x !== id))}
                 />
               )}
@@ -499,15 +504,15 @@ export default function Ispettori() {
  */
 function BloccoPuntiVendita({
   assegnati,
-  daAggiungere,
+  tutti,
   nomeDi,
-  onAggiungi,
+  onCambia,
   onTogli,
 }: {
   assegnati: string[];
-  daAggiungere: { id: string; nome: string }[];
+  tutti: { id: string; nome: string; dettaglio?: string }[];
   nomeDi: (id: string) => string;
-  onAggiungi: (id: string) => void;
+  onCambia: (ids: string[]) => void;
   onTogli: (id: string) => void;
 }) {
   const c = useColori();
@@ -544,12 +549,12 @@ function BloccoPuntiVendita({
         ))
       )}
 
-      <Select
-        opzioni={daAggiungere}
-        valore={null}
-        onChange={(id) => id && onAggiungi(id)}
-        segnaposto="+  Aggiungi punto vendita"
-        sogliaRicerca={8}
+      <SceltaMultipla
+        etichettaPulsante="+  Scegli i punti vendita"
+        titolo="Punti vendita dell’ispettore"
+        voci={tutti}
+        selezionati={assegnati}
+        onChange={onCambia}
       />
     </View>
   );

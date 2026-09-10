@@ -295,8 +295,11 @@ e un `undefined` al posto di `null` fa fallire la conclusione di una scheda già
   aggira, quindi anche la insert su `ispezioni` verifica l'assegnazione.
 
   L'assegnazione si fa **dentro il modulo di modifica dell'ispettore**, sotto il ruolo:
-  un «+ Aggiungi punto vendita» che apre la tendina e l'elenco di quelli già assegnati
-  sopra, ciascuno con la sua ✕. È stata prima una schermata a parte con le spunte su tutti
+  un pulsante che apre una finestra con le caselle da spuntare — ricerca e azioni di
+  massa comprese — e sopra l'elenco di quelli già assegnati, ciascuno con la sua ✕.
+  La finestra è a scelta multipla e non una tendina: con quarantacinque punti vendita,
+  aprire e richiudere per ciascuno è un lavoro che nessuno fa due volte, ed è stata la
+  prima cosa che il committente ha chiesto di cambiare dopo averlo provato. È stata prima una schermata a parte con le spunte su tutti
   e quarantasei, poi rifatta così su richiesta del committente: comporre l'elenco avendo
   sotto gli occhi quello che c'è già vale più della rapidità di segnarne dieci di fila.
   Gli stessi campi compaiono alla creazione, perché un ispettore appena creato e senza
