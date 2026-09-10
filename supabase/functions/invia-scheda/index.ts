@@ -363,8 +363,7 @@ Deno.serve(async (req) => {
             'In allegato le sole attività assegnate a questo ufficio.',
             '',
             '— Messaggio generato automaticamente da StoreScout.',
-          ].join('
-'),
+          ].join('\n'),
           attachments: [
             {
               filename: `Scheda_${ispezione.numero}_${pdv.codice}_${ufficio.nome.replace(/[^A-Za-z0-9]+/g, '_')}.pdf`,
