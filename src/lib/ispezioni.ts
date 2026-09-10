@@ -387,7 +387,7 @@ export type AttivitaLetta = {
   scadenza_data: string | null;
   scadenza_testo: string | null;
   scadenza_note: string | null;
-  destinatari: { nome: string } | null;
+  destinatari: { nome: string; richiede_verifica: boolean } | null;
   reparti: { nome: string } | null;
   tipi_intervento: { nome: string } | null;
 };
@@ -412,7 +412,7 @@ export async function caricaDettaglio(id: string): Promise<Dettaglio> {
     supabase
       .from('ispezione_attivita')
       .select(
-        'id, ordine, note, scadenza_data, scadenza_testo, scadenza_note, destinatari(nome), reparti(nome), tipi_intervento(nome)',
+        'id, ordine, note, scadenza_data, scadenza_testo, scadenza_note, destinatari(nome, richiede_verifica), reparti(nome), tipi_intervento(nome)',
       )
       .eq('ispezione_id', id)
       .order('ordine'),

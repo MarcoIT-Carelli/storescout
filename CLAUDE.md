@@ -332,6 +332,12 @@ e un `undefined` al posto di `null` fa fallire la conclusione di una scheda già
   di `ispezioni` si ferma alle bozze — una scheda firmata non si tocca — e allargarla per
   un solo campo aprirebbe l'intera riga, perché **le policy non distinguono fra colonne**.
 
+  Una scheda in verifica **si apre sulle sole righe che la tengono aperta**, con in fondo
+  il pulsante per vedere tutta la scheda e tornare indietro. Chi arriva lì dalla prima
+  pagina ha un compito preciso, e le righe che nessuno gli ha chiesto di controllare gli
+  stanno fra le mani e il lavoro. Il filtro segue lo stato del documento, non la porta da
+  cui si entra: chiusa la verifica, la scheda si riapre intera da sola.
+
   Il promemoria arriva in due modi perché le scadenze sono di due tipi. Con una data si
   aspetta che arrivi e lo si dice in home. Una scadenza scritta a parole non ha niente da
   confrontare, quindi si aggancia al luogo invece che al tempo e ricompare all'ispezione

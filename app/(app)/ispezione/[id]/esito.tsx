@@ -74,6 +74,14 @@ export default function Esito() {
   const [dettaglio, setDettaglio] = useState<Dettaglio | null>(null);
   const [caricamento, setCaricamento] = useState(true);
   const [stato, setStato] = useState<StatoOperazione>(INATTIVO);
+  /**
+   * Una scheda «da chiudere» si apre sulle sole righe che la tengono aperta.
+   *
+   * Chi arriva qui dalla prima pagina ha un compito preciso — verificare quegli
+   * interventi — e le altre righe, che nessuno gli ha chiesto di controllare, gli
+   * stanno fra le mani e il lavoro. Restano a un tocco di distanza.
+   */
+  const [mostraTutte, setMostraTutte] = useState(false);
 
   const carica = useCallback(async (silenzioso = false) => {
     if (!id) return;
@@ -159,6 +167,10 @@ export default function Esito() {
   }
 
   const { ispezione: i, attivita, svolte, foto } = dettaglio;
+
+  const daVerificare = attivita.filter((a) => a.destinatari?.richiede_verifica);
+  const filtrata = i.in_verifica && !mostraTutte && daVerificare.length > 0;
+  const attivitaVisibili = filtrata ? daVerificare : attivita;
   const pdv = pdvPerId(i.pdv_id);
   const aspetto = ASPETTO[i.stato];
   const ingresso = new Date(i.ora_ingresso);
@@ -237,14 +249,14 @@ export default function Esito() {
                 NIENTE DA RILEVARE
               </Text>
             </View>
-          ) : attivita.length === 0 ? (
+          ) : attivitaVisibili.length === 0 ? (
             <Card>
               <Text style={[testo.corpo, { color: c.testoSecondario }]}>
                 Nessuna attività registrata su questa scheda.
               </Text>
             </Card>
           ) : (
-            attivita.map((a) => (
+            attivitaVisibili.map((a) => (
               <Card key={a.id}>
                 <View style={[stili.tendine, stretto && { flexDirection: 'column' }]}>
                   <Voce contenitore={stretto ? undefined : { flex: 1, minWidth: 140 }} etichetta="Destinatario" valore={a.destinatari?.nome ?? '—'} compatta />
@@ -264,6 +276,27 @@ export default function Esito() {
             ))
           )}
         </View>
+
+        {i.in_verifica && daVerificare.length > 0 && attivita.length > daVerificare.length ? (
+          <View style={{ gap: spazio.sm }}>
+            {filtrata ? (
+              <Text style={[testo.piccolo, { color: c.testoSecondario }]}>
+                Stai vedendo le {daVerificare.length === 1 ? 'sola attività' : `sole ${daVerificare.length} attività`} da
+                verificare. La scheda ne contiene {attivita.length} in tutto.
+              </Text>
+            ) : null}
+            <Button
+              titolo={
+                filtrata
+                  ? `Mostra tutte le attività (${attivita.length})`
+                  : 'Mostra solo quelle da verificare'
+              }
+              variante="secondario"
+              larghezzaPiena
+              onPress={() => setMostraTutte((v) => !v)}
+            />
+          </View>
+        ) : null}
 
         {svolte.length > 0 ? (
           <View style={{ gap: spazio.md }}>
