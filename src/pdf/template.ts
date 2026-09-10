@@ -36,7 +36,7 @@ export type DatiScheda = {
   firmaResponsabileBase64: string | null;
   nomeResponsabile: string;
   motivoAssenzaFirma: string;
-  /** Voto della visita, da 1 a 5. Nel documento compare la sola cifra. */
+  /** Voto dell’ispezione, da 1 a 5. Nel documento compare la sola cifra. */
   voto: number | null;
   rottureStockPromo: number | null;
   /**
@@ -131,7 +131,7 @@ export function htmlScheda(d: DatiScheda): string {
   const chiusura =
     d.voto !== null || d.rottureStockPromo !== null
       ? `<div class="chiusura">
-          ${d.voto !== null ? `<div class="voto"><span class="etichettaChiusura">Voto della visita</span><span class="cifraVoto">${d.voto}<span class="suCinque"> / 5</span></span></div>` : ''}
+          ${d.voto !== null ? `<div class="voto"><span class="etichettaChiusura">Voto ispezione</span><span class="cifraVoto">${d.voto}<span class="suCinque"> / 5</span></span></div>` : ''}
           ${d.rottureStockPromo !== null ? `<div class="rotture"><span class="etichettaChiusura">Rotture di stock promo sala</span><span class="valoreRotture">${d.rottureStockPromo}</span></div>` : ''}
         </div>`
       : '';

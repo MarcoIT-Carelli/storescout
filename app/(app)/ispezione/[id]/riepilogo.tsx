@@ -169,7 +169,7 @@ export default function Riepilogo() {
 
         <Card>
           <Text style={[testo.etichetta, { color: c.testoSecondario, marginBottom: spazio.md }]}>
-            VOTO DELLA VISITA
+            VOTO ISPEZIONE
           </Text>
           <SelettoreVoto
             valore={bozza.voto}

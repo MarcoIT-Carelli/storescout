@@ -434,7 +434,7 @@ Il PDF deve **replicare il modulo Excel attuale**, con:
   di scadenza tra parentesi se presenti)
 - se "Niente da rilevare": in luogo della tabella, la dicitura **NIENTE DA RILEVARE** ben visibile
 - blocco "Ho svolto le seguenti attività" con l'elenco puntato
-- blocco di chiusura con il **voto della visita** (la sola cifra da 1 a 5: il giudizio a
+- blocco di chiusura con il **voto ispezione** (la sola cifra da 1 a 5: il giudizio a
   parole resta nell'app) e le rotture di stock promo sala, se rilevate
 - in fondo: le due firme come immagini, con nome ispettore e nome responsabile sotto
 - piè di pagina con numero ispezione e data/ora di generazione

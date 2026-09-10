@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { raggio, spazio, testo, TOCCO_MIN, useColori } from '@/theme';
 
 /**
- * Voto complessivo del punto vendita, da 1 a 5.
+ * Voto dell’ispezione, da 1 a 5.
  *
  * Il numero è il fulcro: è quello che finisce nel PDF e nelle statistiche, ed è
  * abbastanza grande da premerlo con il tablet in una mano sola. Il giudizio a parole
@@ -84,7 +84,7 @@ export function SelettoreVoto({ valore, onChange, disabilitato = false }: Props)
         </Text>
       ) : (
         <Text style={[testo.piccolo, { color: c.testoSecondario, textAlign: 'center' }]}>
-          Tocca un numero per dare il voto alla visita.
+          Tocca un numero per dare il voto all’ispezione.
         </Text>
       )}
     </View>

@@ -215,7 +215,7 @@ export default function Esito() {
           <Voce etichetta="Durata" valore={uscita ? durata(ingresso, uscita) : '—'} />
           {i.voto !== null ? (
             <Voce
-              etichetta="Voto della visita"
+              etichetta="Voto ispezione"
               valore={`${i.voto} / 5 — ${GIUDIZIO[i.voto as Voto] ?? ''}`.trim()}
             />
           ) : null}

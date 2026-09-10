@@ -86,7 +86,7 @@ export function validaBozza(bozza: Bozza): Problema[] {
   }
 
   if (bozza.voto === null) {
-    problemi.push({ dove: 'riepilogo', messaggio: 'Manca il voto della visita.' });
+    problemi.push({ dove: 'riepilogo', messaggio: 'Manca il voto ispezione.' });
   }
 
   if (bozza.ora_uscita && new Date(bozza.ora_uscita) < new Date(bozza.ora_ingresso)) {
