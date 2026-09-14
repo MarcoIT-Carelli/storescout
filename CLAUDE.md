@@ -466,7 +466,11 @@ settimana non giustifica una vista da mantenere, e così i conteggi stanno accan
 che li spiega.
 
 È l'unica funzione che nessun utente dell'app invoca, quindi non si difende con una sessione
-ma con un segreto condiviso (`REPORT_SECRET`) passato in un header. I destinatari stanno in
+ma con un segreto condiviso (`REPORT_SECRET`) passato in un header. **Chi la chiama deve
+comunque mandare un `Authorization: Bearer <anon key>`**: Supabase rifiuta ogni richiesta a
+una Edge Function priva di quell'header, prima ancora di eseguirla, e il segreto — che è un
+controllo nostro — non verrebbe mai letto. Il primo tentativo di schedulazione si è fermato
+lì con un 401 che sembrava un segreto sbagliato. I destinatari stanno in
 `REPORT_DESTINATARI`, separati da virgola: cambiarli non richiede di toccare il codice.
 
 Qui il non-2xx in caso di errore è corretto, al contrario di `invia-scheda`: non c'è nessuno
