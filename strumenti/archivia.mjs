@@ -1,82 +1,94 @@
 #!/usr/bin/env node
 /**
- * Scarica in locale i file di StoreScout e libera lo spazio su Supabase.
+ * Sposta su questo computer i file di StoreScout, svuotando lo storage di Supabase.
  *
- * Il piano gratuito di Supabase concede 1 GB di storage, e con una ventina di ispezioni
- * al giorno — PDF, estratti, firme e foto — si riempie in poco più di un mese. Invece di
- * cancellare, questo strumento porta tutto su un disco aziendale: i documenti restano,
- * e Supabase torna a essere ciò che deve essere, un'area di transito.
+ * Scarica PDF, firme e foto mantenendo la struttura delle cartelle, e cancella dal
+ * server ciò che ha portato via. Non fa altro.
  *
- * Gira una volta al giorno dall'Utilità di pianificazione di Windows.
+ * ── Perché non ha dipendenze ────────────────────────────────────────────────────
  *
- * ── Come funziona ───────────────────────────────────────────────────────────────
+ * Gira sul PC di backup, che non è la macchina di sviluppo: un file solo, nessun
+ * `npm install`, nessuna cartella di librerie da tenere aggiornata. Serve soltanto
+ * Node 18 o successivo, che porta `fetch` con sé. Le API di Supabase sono HTTP, e
+ * chiamarle direttamente costa meno che portarsi dietro un client intero.
  *
- * 1. Elenca i file dei tre bucket (`schede`, `firme`, `foto`).
- * 2. Scarica quelli che in locale non ci sono ancora, ricostruendo le cartelle.
- * 3. Cancella da Supabase i file più vecchi di GIORNI_DA_TENERE **che risultano già
- *    salvati in locale**, con la dimensione giusta.
+ * ── Installazione ───────────────────────────────────────────────────────────────
  *
- * Il punto 3 non tocca mai un file che non sia già al sicuro: se il download di ieri è
- * fallito, quel file resta su Supabase e si riproverà domani. Meglio occupare spazio in
- * più che cancellare l'unica copia rimasta.
+ * 1. Copia questo file in una cartella del PC di backup, per esempio
+ *    `C:\\Storescout\\strumenti\\archivia.mjs`
+ * 2. Accanto al file crea `.env` con dentro:
  *
- * ── Configurazione ──────────────────────────────────────────────────────────────
+ *      SUPABASE_URL=https://xxxxxxxx.supabase.co
+ *      SUPABASE_ANON_KEY=eyJ...
+ *      ARCHIVIO_CARTELLA=C:\\Storescout\\archivio
+ *      ARCHIVIO_EMAIL=utente@carellidistribuzione.it
+ *      ARCHIVIO_PASSWORD=la-password-di-quell-utente
  *
- * Nel file `.env` della cartella di progetto servono, oltre alle due già presenti:
+ * 3. Provalo:  node archivia.mjs
  *
- *   ARCHIVIO_CARTELLA=D:\\ArchivioStoreScout
- *   ARCHIVIO_EMAIL=tua.email@carellidistribuzione.it
- *   ARCHIVIO_PASSWORD=la-password-di-quell-utente
+ * ── Come si comporta ────────────────────────────────────────────────────────────
  *
- * Le credenziali sono quelle di un utente dell'app, non la chiave di servizio: per
- * leggere i file bastano i permessi che ha già un ispettore, e una chiave che scavalca
- * ogni regola non ha motivo di stare su un PC.
+ * Un file viene cancellato dal server **solo dopo** essere stato scritto su disco con
+ * la dimensione giusta. Se il download fallisce, quel file resta su Supabase e si
+ * riproverà domani: meglio occupare spazio in più che perdere l'unica copia.
+ *
+ * `GIORNI_DA_TENERE` a zero significa portare via tutto. Alzandolo si lascia sul
+ * server una finestra recente — serve al reinvio di una scheda e alla riapertura del
+ * PDF dallo storico, che leggono il file da lì.
  */
 
-import { createClient } from '@supabase/supabase-js';
 import { createWriteStream } from 'node:fs';
 import { mkdir, readFile, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
 const BUCKET = ['schede', 'firme', 'foto'];
 
-/** Dopo quanti giorni un file già archiviato si può togliere da Supabase. */
-const GIORNI_DA_TENERE = 20;
+/** Giorni da lasciare sul server. Zero: si porta via tutto. */
+const GIORNI_DA_TENERE = 0;
 
 // ── Configurazione ──────────────────────────────────────────────────────────────
 
+const QUI = dirname(fileURLToPath(import.meta.url));
+
 async function leggiEnv() {
-  const testo = await readFile(new URL('../.env', import.meta.url), 'utf8').catch(() => '');
   const valori = {};
-  for (const riga of testo.split(/\r?\n/)) {
-    const pulita = riga.trim();
-    if (!pulita || pulita.startsWith('#')) continue;
-    const taglio = pulita.indexOf('=');
-    if (taglio > 0) valori[pulita.slice(0, taglio).trim()] = pulita.slice(taglio + 1).trim();
+  for (const nome of ['.env', '../.env']) {
+    const testo = await readFile(join(QUI, nome), 'utf8').catch(() => null);
+    if (testo === null) continue;
+    for (const riga of testo.split(/\r?\n/)) {
+      const pulita = riga.trim();
+      if (!pulita || pulita.startsWith('#')) continue;
+      const taglio = pulita.indexOf('=');
+      if (taglio > 0) valori[pulita.slice(0, taglio).trim()] = pulita.slice(taglio + 1).trim();
+    }
+    break;
   }
   return { ...valori, ...process.env };
 }
 
 const env = await leggiEnv();
 
-const URL_SUPABASE = env.EXPO_PUBLIC_SUPABASE_URL;
-const CHIAVE = env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+// I nomi con `EXPO_PUBLIC_` sono quelli del progetto: si accettano entrambi, così lo
+// stesso file funziona sia qui sia sul PC di backup.
+const URL_SUPABASE = env.SUPABASE_URL || env.EXPO_PUBLIC_SUPABASE_URL;
+const CHIAVE = env.SUPABASE_ANON_KEY || env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 const CARTELLA = env.ARCHIVIO_CARTELLA;
 const EMAIL = env.ARCHIVIO_EMAIL;
 const PASSWORD = env.ARCHIVIO_PASSWORD;
 
 const mancanti = [
-  ['EXPO_PUBLIC_SUPABASE_URL', URL_SUPABASE],
-  ['EXPO_PUBLIC_SUPABASE_ANON_KEY', CHIAVE],
+  ['SUPABASE_URL', URL_SUPABASE],
+  ['SUPABASE_ANON_KEY', CHIAVE],
   ['ARCHIVIO_CARTELLA', CARTELLA],
   ['ARCHIVIO_EMAIL', EMAIL],
   ['ARCHIVIO_PASSWORD', PASSWORD],
 ].filter(([, valore]) => !valore);
 
 if (mancanti.length > 0) {
-  console.error('Configurazione incompleta. Mancano nel file .env:');
+  console.error('Configurazione incompleta. Nel file .env mancano:');
   for (const [nome] of mancanti) console.error(`  ${nome}`);
   process.exit(1);
 }
@@ -85,32 +97,57 @@ if (mancanti.length > 0) {
 
 const adesso = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
 const dice = (...parti) => console.log(`[${adesso()}]`, ...parti);
-
 const leggibile = (byte) =>
   byte >= 1024 * 1024 ? `${(byte / 1024 / 1024).toFixed(1)} MB` : `${Math.round(byte / 1024)} KB`;
 
+let token = '';
+
+const intestazioni = () => ({
+  apikey: CHIAVE,
+  Authorization: `Bearer ${token || CHIAVE}`,
+  'Content-Type': 'application/json',
+});
+
+async function accedi() {
+  const r = await fetch(`${URL_SUPABASE}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: { apikey: CHIAVE, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
+  });
+  if (!r.ok) throw new Error(`accesso non riuscito: ${r.status} ${await r.text()}`);
+  token = (await r.json()).access_token;
+}
+
 /**
- * Elenca ricorsivamente un bucket.
+ * Elenca un bucket scendendo nelle sottocartelle.
  *
- * L'API dello storage non ha una lista piatta: restituisce una cartella per volta, e le
- * sottocartelle si riconoscono perché non hanno metadati. Si scende a mano.
+ * L'API restituisce una cartella per volta; le sottocartelle si riconoscono perché non
+ * hanno metadati. Si scende a mano.
  */
-async function elenca(supabase, bucket, prefisso = '') {
+async function elenca(bucket, prefisso = '') {
   const trovati = [];
-  let pagina = 0;
+  let saltati = 0;
 
   for (;;) {
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .list(prefisso, { limit: 100, offset: pagina * 100, sortBy: { column: 'name', order: 'asc' } });
+    const r = await fetch(`${URL_SUPABASE}/storage/v1/object/list/${bucket}`, {
+      method: 'POST',
+      headers: intestazioni(),
+      body: JSON.stringify({
+        prefix: prefisso,
+        limit: 100,
+        offset: saltati,
+        sortBy: { column: 'name', order: 'asc' },
+      }),
+    });
+    if (!r.ok) throw new Error(`elenco di ${bucket}/${prefisso}: ${r.status} ${await r.text()}`);
 
-    if (error) throw new Error(`elenco di ${bucket}/${prefisso}: ${error.message}`);
-    if (!data || data.length === 0) break;
+    const pagina = await r.json();
+    if (!Array.isArray(pagina) || pagina.length === 0) break;
 
-    for (const voce of data) {
+    for (const voce of pagina) {
       const percorso = prefisso ? `${prefisso}/${voce.name}` : voce.name;
-      if (voce.id === null || voce.metadata === null) {
-        trovati.push(...(await elenca(supabase, bucket, percorso)));
+      if (voce.id === null || voce.metadata == null) {
+        trovati.push(...(await elenca(bucket, percorso)));
       } else {
         trovati.push({
           percorso,
@@ -120,48 +157,51 @@ async function elenca(supabase, bucket, prefisso = '') {
       }
     }
 
-    if (data.length < 100) break;
-    pagina++;
+    if (pagina.length < 100) break;
+    saltati += 100;
   }
 
   return trovati;
 }
 
-/** Vero se il file è già in locale con la dimensione attesa. */
+/** Vero se il file è già su disco con la dimensione attesa. */
 async function giaSalvato(destinazione, byteAttesi) {
   try {
     const informazioni = await stat(destinazione);
-    // La dimensione a zero non si controlla: alcuni metadati non la riportano, e in quel
-    // caso basta che il file esista.
     return byteAttesi === 0 || informazioni.size === byteAttesi;
   } catch {
     return false;
   }
 }
 
-async function scarica(supabase, bucket, percorso, destinazione) {
-  const { data, error } = await supabase.storage.from(bucket).download(percorso);
-  if (error) throw new Error(error.message);
+async function scarica(bucket, percorso, destinazione) {
+  const r = await fetch(
+    `${URL_SUPABASE}/storage/v1/object/${bucket}/${percorso.split('/').map(encodeURIComponent).join('/')}`,
+    { headers: { apikey: CHIAVE, Authorization: `Bearer ${token}` } },
+  );
+  if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
 
   await mkdir(dirname(destinazione), { recursive: true });
-  // In streaming invece che tutto in memoria: i PDF sono piccoli, ma una cartella di
-  // foto di un anno non deve passare per la RAM.
-  await pipeline(Readable.fromWeb(data.stream()), createWriteStream(destinazione));
+  // In streaming: una cartella di foto non deve passare per la memoria.
+  await pipeline(Readable.fromWeb(r.body), createWriteStream(destinazione));
+}
+
+async function cancella(bucket, percorsi) {
+  const r = await fetch(`${URL_SUPABASE}/storage/v1/object/${bucket}`, {
+    method: 'DELETE',
+    headers: intestazioni(),
+    body: JSON.stringify({ prefixes: percorsi }),
+  });
+  if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
 }
 
 // ── Corpo ───────────────────────────────────────────────────────────────────────
 
-const supabase = createClient(URL_SUPABASE, CHIAVE, {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
-
 dice('Accesso a Supabase…');
-const { error: erroreAccesso } = await supabase.auth.signInWithPassword({
-  email: EMAIL,
-  password: PASSWORD,
-});
-if (erroreAccesso) {
-  console.error(`Accesso non riuscito: ${erroreAccesso.message}`);
+try {
+  await accedi();
+} catch (e) {
+  console.error(e.message);
   process.exit(1);
 }
 
@@ -171,22 +211,21 @@ scadenza.setDate(scadenza.getDate() - GIORNI_DA_TENERE);
 let scaricati = 0;
 let byteScaricati = 0;
 let gia = 0;
+let cancellati = 0;
 let falliti = 0;
-const daCancellare = {};
 
 for (const bucket of BUCKET) {
-  dice(`— bucket ${bucket}`);
   let file;
   try {
-    file = await elenca(supabase, bucket);
+    file = await elenca(bucket);
   } catch (e) {
-    console.error(`  elenco non riuscito: ${e.message}`);
+    console.error(`[${bucket}] ${e.message}`);
     falliti++;
     continue;
   }
 
-  dice(`  ${file.length} file sul server`);
-  daCancellare[bucket] = [];
+  dice(`${bucket}: ${file.length} file sul server`);
+  const daTogliere = [];
 
   for (const voce of file) {
     const destinazione = resolve(join(CARTELLA, bucket, voce.percorso));
@@ -195,7 +234,7 @@ for (const bucket of BUCKET) {
       gia++;
     } else {
       try {
-        await scarica(supabase, bucket, voce.percorso, destinazione);
+        await scarica(bucket, voce.percorso, destinazione);
         scaricati++;
         byteScaricati += voce.byte;
       } catch (e) {
@@ -205,43 +244,32 @@ for (const bucket of BUCKET) {
       }
     }
 
-    // Si cancella solo ciò che è vecchio **e** già al sicuro in locale.
-    if (voce.creato && new Date(voce.creato) < scadenza) {
-      if (await giaSalvato(destinazione, voce.byte)) daCancellare[bucket].push(voce.percorso);
+    // Si toglie dal server solo ciò che è davvero su disco. Un download fallito
+    // lascia il file dov'è, e domani si riprova.
+    const abbastanzaVecchio = !voce.creato || new Date(voce.creato) < scadenza;
+    if (abbastanzaVecchio && (await giaSalvato(destinazione, voce.byte))) {
+      daTogliere.push(voce.percorso);
     }
   }
-}
-
-dice(`Scaricati ${scaricati} file (${leggibile(byteScaricati)}), ${gia} già presenti, ${falliti} non riusciti`);
-
-// ── Pulizia su Supabase ─────────────────────────────────────────────────────────
-
-let cancellati = 0;
-for (const bucket of BUCKET) {
-  const elenco = daCancellare[bucket] ?? [];
-  if (elenco.length === 0) continue;
 
   // A blocchi: l'API accetta un numero limitato di percorsi per chiamata.
-  for (let i = 0; i < elenco.length; i += 50) {
-    const blocco = elenco.slice(i, i + 50);
-    const { error } = await supabase.storage.from(bucket).remove(blocco);
-    if (error) {
-      console.error(`  pulizia di ${bucket}: ${error.message}`);
-      falliti++;
-    } else {
+  for (let i = 0; i < daTogliere.length; i += 50) {
+    const blocco = daTogliere.slice(i, i + 50);
+    try {
+      await cancella(bucket, blocco);
       cancellati += blocco.length;
+    } catch (e) {
+      console.error(`  pulizia di ${bucket}: ${e.message}`);
+      falliti++;
     }
   }
 }
 
-if (cancellati > 0) {
-  dice(`Tolti da Supabase ${cancellati} file più vecchi di ${GIORNI_DA_TENERE} giorni, già archiviati in locale`);
-} else {
-  dice('Niente da togliere da Supabase');
-}
+dice(
+  `Scaricati ${scaricati} file (${leggibile(byteScaricati)}), ${gia} già presenti, ` +
+    `${cancellati} tolti dal server, ${falliti} non riusciti`,
+);
 
-await supabase.auth.signOut();
-
-// Codice di uscita diverso da zero se qualcosa non è andato: l'Utilità di
-// pianificazione lo segna come fallito e te ne accorgi dallo storico.
+// Uscita diversa da zero se qualcosa non è andato: l'Utilità di pianificazione la
+// registra come esecuzione fallita, e te ne accorgi dallo storico.
 process.exit(falliti > 0 ? 1 : 0);
