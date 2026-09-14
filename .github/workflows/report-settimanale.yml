@@ -1,7 +1,5 @@
 name: Report settimanale
 
-# Lunedì alle 6:00 UTC, cioè le 7 in inverno e le 8 in estate: il riepilogo deve
-# essere già nella casella quando qualcuno la apre, non arrivare a metà mattina.
 on:
   schedule:
     - cron: '0 6 * * 1'
@@ -17,21 +15,40 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Chiama la funzione di report
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          REPORT_SECRET: ${{ secrets.REPORT_SECRET }}
+          GIORNI: ${{ github.event.inputs.giorni || '7' }}
         run: |
-          GIORNI="${{ github.event.inputs.giorni || '7' }}"
-
+          set -u
           CORPO=$(mktemp)
-          STATO=$(curl -sS -o "$CORPO" -w '%{http_code}' \
-            -X POST \   -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
-            -H "x-report-secret: ${{ secrets.REPORT_SECRET }}" \
-            -H 'Content-Type: application/json' \
-            "${{ secrets.SUPABASE_URL }}/functions/v1/report-periodico?giorni=$GIORNI")
 
-          echo "HTTP $STATO"
-          cat "$CORPO"
-          echo
+          for TENTATIVO in 1 2 3; do
+            STATO=$(curl -sS -o "$CORPO" -w '%{http_code}' -X POST \
+              -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+              -H "x-report-secret: $REPORT_SECRET" \
+              -H 'Content-Type: application/json' \
+              "$SUPABASE_URL/functions/v1/report-periodico?giorni=$GIORNI" || echo "000")
 
-          if [ "$STATO" != "200" ]; then
-            echo "::error::Il report non è stato inviato (HTTP $STATO)"
-            exit 1
-          fi
+            echo "Tentativo $TENTATIVO: HTTP $STATO"
+            cat "$CORPO"
+            echo
+
+            if [ "$STATO" = "200" ]; then
+              echo "Report inviato."
+              exit 0
+            fi
+
+            case "$STATO" in
+              400|401|403|404)
+                echo "::error::Il report non e' stato inviato (HTTP $STATO). Controlla i secret."
+                exit 1
+                ;;
+            esac
+
+            [ "$TENTATIVO" -lt 3 ] && sleep 20
+          done
+
+          echo "::error::Il report non e' stato inviato dopo tre tentativi (ultimo HTTP $STATO)"
+          exit 1
