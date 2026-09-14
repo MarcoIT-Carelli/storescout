@@ -467,6 +467,31 @@ Function girano su infrastruttura condivisa senza indirizzi fissi**, quindi non 
 da mettere fra le eccezioni. L'aumento va chiesto sull'account, o si passa a un servizio di
 invio dedicato.
 
+### L'invio ritenta da solo
+
+`supabase/functions/invia-arretrate`, chiamata ogni venti minuti da una GitHub Action.
+
+Fino alla revisione `1.1.9` l'invio aveva **un solo tentativo**: se il server di posta era
+irraggiungibile in quel momento — un blocco temporaneo, una rete lenta, un riavvio
+dall'altra parte — la scheda restava ferma finché qualcuno non premeva «Riprova invio».
+Con sei ispettori in giro per la provincia quel qualcuno non esiste, e il difetto è venuto
+fuori in collaudo nel modo peggiore: una conclusione andata a buon fine su tutto tranne la
+spedizione.
+
+Il recupero ripesca le ispezioni `conclusa` o `errore_invio` che hanno già un PDF, dalla
+più vecchia, e richiama `invia-scheda` per ciascuna. **Cinque per giro e due secondi di
+pausa fra l'una e l'altra**: il punto non è svuotare la coda in fretta, è non ripresentarsi
+al server di posta a raffica proprio mentre sta rifiutando.
+
+Perché possa chiamare l'invio senza una sessione utente — un ritentativo parte ore dopo,
+con l'app chiusa — `invia-scheda` accetta un `x-sistema-secret` che salta la verifica del
+chiamante. Il segreto vive nei secret della funzione e non esce dal server: il controllo
+sulle chiamate dai tablet resta identico.
+
+**Dopo dieci tentativi si arrende.** Se in oltre tre ore non è partita, il problema non si
+risolve insistendo: è un indirizzo sbagliato, una casella piena, un allegato irrecuperabile.
+Quelle schede restano nel pannello e nel riepilogo settimanale, da guardare a mano.
+
 ### Il riepilogo settimanale
 
 `supabase/functions/report-periodico` più `.github/workflows/report-settimanale.yml`:

@@ -30,6 +30,16 @@ const URL_SUPABASE = Deno.env.get('SUPABASE_URL')!;
 const CHIAVE_ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
 const CHIAVE_SERVIZIO = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
+/**
+ * Permette al recupero automatico di invocare l'invio senza una sessione utente.
+ *
+ * Un ritentativo parte ore dopo, quando l'ispettore ha chiuso l'app e magari è a casa:
+ * non c'è nessun JWT da presentare. Il segreto sta nei secret della funzione e non esce
+ * mai dal server, quindi non è una scorciatoia che indebolisce il controllo sugli utenti
+ * — quello resta identico per tutte le chiamate che arrivano dai tablet.
+ */
+const CHIAVE_SISTEMA = Deno.env.get('SISTEMA_SECRET') ?? '';
+
 const SMTP_HOST = Deno.env.get('SMTP_HOST') ?? '';
 const SMTP_PORT = Number(Deno.env.get('SMTP_PORT') ?? '465');
 const SMTP_USER = Deno.env.get('SMTP_USER') ?? '';
@@ -123,6 +133,10 @@ Deno.serve(async (req) => {
   const autorizzazione = req.headers.get('Authorization');
   if (!autorizzazione) return risposta({ errore: 'Chiamata senza autenticazione.' }, 401);
 
+  // Chiamata di sistema: il recupero automatico, che una sessione non ce l'ha.
+  const daSistema =
+    CHIAVE_SISTEMA.length > 0 && req.headers.get('x-sistema-secret') === CHIAVE_SISTEMA;
+
   let ispezioneId: string;
   try {
     ({ ispezione_id: ispezioneId } = await req.json());
@@ -132,20 +146,23 @@ Deno.serve(async (req) => {
   if (!ispezioneId) return risposta({ errore: 'Manca ispezione_id.' }, 400);
 
   // Il permesso si verifica con la sessione del chiamante: le policy di `ispezioni`
-  // fanno già il lavoro, un ispettore vede solo le proprie.
-  const comeChiamante = createClient(URL_SUPABASE, CHIAVE_ANON, {
-    global: { headers: { Authorization: autorizzazione } },
-  });
+  // fanno già il lavoro, un ispettore vede solo le proprie. Il recupero automatico salta
+  // questo passaggio perché è il server a chiamare sé stesso.
+  if (!daSistema) {
+    const comeChiamante = createClient(URL_SUPABASE, CHIAVE_ANON, {
+      global: { headers: { Authorization: autorizzazione } },
+    });
 
-  const { data: sessione } = await comeChiamante.auth.getUser();
-  if (!sessione.user) return risposta({ errore: 'Sessione non valida.' }, 401);
+    const { data: sessione } = await comeChiamante.auth.getUser();
+    if (!sessione.user) return risposta({ errore: 'Sessione non valida.' }, 401);
 
-  const { data: visibile } = await comeChiamante
-    .from('ispezioni')
-    .select('id')
-    .eq('id', ispezioneId)
-    .maybeSingle();
-  if (!visibile) return risposta({ errore: 'Ispezione non trovata o non tua.' }, 403);
+    const { data: visibile } = await comeChiamante
+      .from('ispezioni')
+      .select('id')
+      .eq('id', ispezioneId)
+      .maybeSingle();
+    if (!visibile) return risposta({ errore: 'Ispezione non trovata o non tua.' }, 403);
+  }
 
   const servizio = createClient(URL_SUPABASE, CHIAVE_SERVIZIO, {
     auth: { autoRefreshToken: false, persistSession: false },
