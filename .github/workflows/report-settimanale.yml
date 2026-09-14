@@ -1,0 +1,37 @@
+name: Report settimanale
+
+# Lunedì alle 6:00 UTC, cioè le 7 in inverno e le 8 in estate: il riepilogo deve
+# essere già nella casella quando qualcuno la apre, non arrivare a metà mattina.
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      giorni:
+        description: 'Giorni da includere nel riepilogo'
+        required: false
+        default: '7'
+
+jobs:
+  invia:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Chiama la funzione di report
+        run: |
+          GIORNI="${{ github.event.inputs.giorni || '7' }}"
+
+          CORPO=$(mktemp)
+          STATO=$(curl -sS -o "$CORPO" -w '%{http_code}' \
+            -X POST \
+            -H "x-report-secret: ${{ secrets.REPORT_SECRET }}" \
+            -H 'Content-Type: application/json' \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/report-periodico?giorni=$GIORNI")
+
+          echo "HTTP $STATO"
+          cat "$CORPO"
+          echo
+
+          if [ "$STATO" != "200" ]; then
+            echo "::error::Il report non è stato inviato (HTTP $STATO)"
+            exit 1
+          fi
