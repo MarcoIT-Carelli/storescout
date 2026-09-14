@@ -449,6 +449,24 @@ aggiornamenti sul canale `production` per sempre, e non è modificabile dopo.
 Solo JavaScript e immagini viaggiano via rete. Una libreria nuova, un permesso, un cambio di
 SDK richiedono un APK nuovo e il giro a mano su ogni tablet.
 
+### Quante email manda davvero l'app
+
+Con sei ispettori e tre o quattro ispezioni a testa si arriva a **24 schede al giorno**, ma
+i messaggi sono di più: dalla revisione `1.1.3` ogni scheda ne manda uno completo **più uno
+per ogni ufficio** toccato dalle attività. Con tutti e sette i destinatari configurati si
+sta fra gli **80 e i 100 messaggi al giorno**, concentrati nelle ore in cui gli ispettori
+sono in negozio.
+
+Il rischio non è il totale giornaliero — Aruba ne ammette qualche centinaio — ma la
+**frequenza**: una conclusione fa partire quattro o cinque messaggi di fila, ed è quello che
+fa scattare i limiti. Per questo fra un invio e il successivo c'è mezzo secondo di pausa, e
+tutti passano da una sola connessione aperta una volta.
+
+Se i limiti della casella non bastassero, la strada non è la whitelist per IP: **le Edge
+Function girano su infrastruttura condivisa senza indirizzi fissi**, quindi non c'è niente
+da mettere fra le eccezioni. L'aumento va chiesto sull'account, o si passa a un servizio di
+invio dedicato.
+
 ### Il riepilogo settimanale
 
 `supabase/functions/report-periodico` più `.github/workflows/report-settimanale.yml`:

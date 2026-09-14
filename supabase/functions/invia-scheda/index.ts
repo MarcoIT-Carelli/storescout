@@ -36,6 +36,18 @@ const SMTP_USER = Deno.env.get('SMTP_USER') ?? '';
 const SMTP_PASS = Deno.env.get('SMTP_PASS') ?? '';
 const SMTP_FROM = Deno.env.get('SMTP_FROM') || SMTP_USER;
 
+/**
+ * Pausa fra un messaggio e il successivo della stessa scheda.
+ *
+ * Una conclusione può far partire quattro o cinque messaggi — la scheda completa più un
+ * estratto per ufficio — e spedirli tutti nello stesso secondo è il modo più rapido per
+ * incontrare i limiti di frequenza del server di posta. Mezzo secondo l'uno non si nota
+ * in negozio e distribuisce le richieste.
+ */
+const PAUSA_FRA_INVII_MS = 500;
+
+const attendi = (ms: number) => new Promise((esegui) => setTimeout(esegui, ms));
+
 /** Sempre in copia, da §8.1 della specifica. */
 const COPIA_FISSA = ['contact2@carellidistribuzione.it', 'a.andriani@carellidistribuzione.it'];
 
@@ -338,6 +350,7 @@ Deno.serve(async (req) => {
     const estrattiFalliti: string[] = [];
 
     for (const [destinatarioId, ufficio] of uffici) {
+      await attendi(PAUSA_FRA_INVII_MS);
       const percorso = ispezione.pdf_path.replace(/\.pdf$/, `_${destinatarioId}.pdf`);
       try {
         const { data: estratto, error: erroreEstratto } = await servizio.storage
