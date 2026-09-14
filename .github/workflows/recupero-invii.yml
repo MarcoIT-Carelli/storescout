@@ -1,0 +1,24 @@
+name: Recupero invii
+
+on:
+  schedule:
+    - cron: '*/20 6-20 * * 1-6'
+  workflow_dispatch:
+
+jobs:
+  recupera:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Rimanda le schede ferme
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SISTEMA_SECRET: ${{ secrets.SISTEMA_SECRET }}
+        run: |
+          set -u
+          curl -sS -X POST \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            -H "x-sistema-secret: $SISTEMA_SECRET" \
+            -H 'Content-Type: application/json' \
+            "$SUPABASE_URL/functions/v1/invia-arretrate"
+          echo
