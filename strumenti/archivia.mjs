@@ -34,6 +34,9 @@
  *
  * Sul server resta una finestra di `GIORNI_DA_TENERE` giorni: serve al reinvio di una
  * scheda e alla riapertura del PDF dallo storico, che leggono il file da lì.
+ *
+ * Con `node archivia.mjs --tutto` quella finestra si ignora e si svuota il server fin
+ * dove si riesce: da usare quando lo spazio è finito e i caricamenti falliscono.
  */
 
 import { createWriteStream } from 'node:fs';
@@ -55,6 +58,15 @@ const BUCKET = ['schede', 'firme', 'foto'];
  * doveva riceverlo.
  */
 const GIORNI_DA_TENERE = 7;
+
+/**
+ * `--tutto` porta via anche i file recenti, ignorando la finestra.
+ *
+ * Serve quando lo spazio su Supabase è finito e i caricamenti cominciano a fallire:
+ * in quel momento liberare conta più che poter rispedire una scheda di ieri, che
+ * comunque è già arrivata a destinazione.
+ */
+const SVUOTA_TUTTO = process.argv.includes('--tutto');
 
 // ── Configurazione ──────────────────────────────────────────────────────────────
 
@@ -213,7 +225,11 @@ try {
 }
 
 const scadenza = new Date();
-scadenza.setDate(scadenza.getDate() - GIORNI_DA_TENERE);
+scadenza.setDate(scadenza.getDate() - (SVUOTA_TUTTO ? 0 : GIORNI_DA_TENERE));
+
+if (SVUOTA_TUTTO) {
+  dice('Modalità --tutto: si porta via anche ciò che è recente.');
+}
 
 let scaricati = 0;
 let byteScaricati = 0;
