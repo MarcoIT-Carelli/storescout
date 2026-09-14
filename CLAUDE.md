@@ -449,6 +449,30 @@ aggiornamenti sul canale `production` per sempre, e non è modificabile dopo.
 Solo JavaScript e immagini viaggiano via rete. Una libreria nuova, un permesso, un cambio di
 SDK richiedono un APK nuovo e il giro a mano su ogni tablet.
 
+### Il riepilogo settimanale
+
+`supabase/functions/report-periodico` più `.github/workflows/report-settimanale.yml`:
+ogni lunedì mattina parte una mail con i numeri della settimana — ispezioni, attività per
+destinatario e per reparto, voto medio, punti vendita messi peggio, schede rimaste da
+chiudere o non partite.
+
+**Conta le attività assegnate, non quelle risolte.** Nel modello non c'è nulla che registri
+se un ufficio ha poi fatto l'intervento: gli uffici l'app non la usano. Il report lo dichiara
+in fondo, perché un numero che sembra dire una cosa e ne dice un'altra è peggio di un numero
+che manca.
+
+Le aggregazioni si fanno in memoria e non con viste SQL: qualche centinaio di righe a
+settimana non giustifica una vista da mantenere, e così i conteggi stanno accanto al testo
+che li spiega.
+
+È l'unica funzione che nessun utente dell'app invoca, quindi non si difende con una sessione
+ma con un segreto condiviso (`REPORT_SECRET`) passato in un header. I destinatari stanno in
+`REPORT_DESTINATARI`, separati da virgola: cambiarli non richiede di toccare il codice.
+
+Qui il non-2xx in caso di errore è corretto, al contrario di `invia-scheda`: non c'è nessuno
+davanti a uno schermo che deve leggere il messaggio, e chi schedula deve accorgersi che è
+andata male.
+
 ### Il formato dell'export
 
 **Punto e virgola, non virgola.** Excel in italiano apre un CSV separato da virgole tutto
