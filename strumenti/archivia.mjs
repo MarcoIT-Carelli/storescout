@@ -35,8 +35,9 @@
  * Sul server resta una finestra di `GIORNI_DA_TENERE` giorni: serve al reinvio di una
  * scheda e alla riapertura del PDF dallo storico, che leggono il file da lì.
  *
- * Con `node archivia.mjs --tutto` quella finestra si ignora e si svuota il server fin
- * dove si riesce: da usare quando lo spazio è finito e i caricamenti falliscono.
+ * La finestra però **si annulla da sé** quando lo spazio occupato supera
+ * `SOGLIA_ALLARME_BYTE`: a quel punto conta più liberare che poter rispedire una scheda
+ * di ieri, e nessuno deve accorgersene a mano. `--tutto` forza la stessa cosa subito.
  */
 
 import { createWriteStream } from 'node:fs';
@@ -67,6 +68,17 @@ const GIORNI_DA_TENERE = 7;
  * comunque è già arrivata a destinazione.
  */
 const SVUOTA_TUTTO = process.argv.includes('--tutto');
+
+/**
+ * Oltre questo spazio occupato su Supabase, la finestra dei sette giorni si annulla
+ * da sé e si porta via tutto.
+ *
+ * Il piano gratuito concede 1 GB: quando finisce, i caricamenti falliscono e le schede
+ * si concludono senza salvare PDF né foto. Meglio perdere la possibilità di rispedire
+ * una scheda di ieri che trovarsi l'app che non archivia più niente — e accorgersene
+ * giorni dopo, da un ispettore che chiama.
+ */
+const SOGLIA_ALLARME_BYTE = 700 * 1024 * 1024;
 
 // ── Configurazione ──────────────────────────────────────────────────────────────
 
@@ -224,30 +236,55 @@ try {
   process.exit(1);
 }
 
-const scadenza = new Date();
-scadenza.setDate(scadenza.getDate() - (SVUOTA_TUTTO ? 0 : GIORNI_DA_TENERE));
-
-if (SVUOTA_TUTTO) {
-  dice('Modalità --tutto: si porta via anche ciò che è recente.');
-}
-
 let scaricati = 0;
 let byteScaricati = 0;
 let gia = 0;
 let cancellati = 0;
 let falliti = 0;
 
+// ── Prima si guarda quanto c'è ──────────────────────────────────────────────────
+
+const contenuto = {};
+let occupato = 0;
+
 for (const bucket of BUCKET) {
-  let file;
   try {
-    file = await elenca(bucket);
+    contenuto[bucket] = await elenca(bucket);
+    occupato += contenuto[bucket].reduce((somma, voce) => somma + voce.byte, 0);
   } catch (e) {
     console.error(`[${bucket}] ${e.message}`);
+    contenuto[bucket] = [];
     falliti++;
-    continue;
   }
+}
 
-  dice(`${bucket}: ${file.length} file sul server`);
+const totale = Object.values(contenuto).reduce((n, elenco) => n + elenco.length, 0);
+dice(`Sul server: ${totale} file, ${leggibile(occupato)} occupati`);
+
+// La finestra si stringe da sé quando lo spazio stringe: nessuno deve accorgersene
+// e lanciare niente a mano.
+const allarme = occupato >= SOGLIA_ALLARME_BYTE;
+const giorni = SVUOTA_TUTTO || allarme ? 0 : GIORNI_DA_TENERE;
+
+if (SVUOTA_TUTTO) {
+  dice('Modalità --tutto: si porta via anche ciò che è recente.');
+} else if (allarme) {
+  dice(
+    `[!] Oltre la soglia di ${leggibile(SOGLIA_ALLARME_BYTE)}: questo giro porta via tutto, ` +
+      'compresi i file recenti, per non arrivare al disco pieno.',
+  );
+}
+
+const scadenza = new Date();
+scadenza.setDate(scadenza.getDate() - giorni);
+
+// ── Poi si scarica e si libera ──────────────────────────────────────────────────
+
+for (const bucket of BUCKET) {
+  const file = contenuto[bucket];
+  if (file.length === 0) continue;
+
+  dice(`${bucket}: ${file.length} file`);
   const daTogliere = [];
 
   for (const voce of file) {

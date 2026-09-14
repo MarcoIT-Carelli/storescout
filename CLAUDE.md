@@ -531,8 +531,15 @@ Quando lo spazio finisce i caricamenti cominciano a fallire: le schede si conclu
 file non si salvano.
 
 Invece di cancellare, lo strumento **porta tutto su un disco aziendale** e poi toglie da
-Supabase ciò che ha più di venti giorni **ed è già salvato in locale con la dimensione
-giusta**. Quell'«ed è già salvato» è la parte che conta: se il download di ieri è fallito,
+Supabase ciò che ha più di sette giorni **ed è già salvato in locale con la dimensione
+giusta**. La settimana di margine serve al reinvio e alla riapertura del PDF, che leggono
+il file dal server.
+
+**Oltre i 700 MB occupati quella finestra si annulla da sola** e il giro porta via tutto.
+Il piano gratuito concede 1 GB: quando finisce, i caricamenti falliscono e le schede si
+concludono senza salvare PDF né foto — un guasto silenzioso di cui ci si accorge giorni
+dopo, da un ispettore che chiama. Meglio perdere la possibilità di rispedire una scheda di
+ieri. `svuota-adesso.bat` forza la stessa cosa a mano, se mai servisse. Quell'«ed è già salvato» è la parte che conta: se il download di ieri è fallito,
 il file resta dov'è e si riproverà domani. Meglio occupare spazio in più che cancellare
 l'unica copia rimasta.
 
