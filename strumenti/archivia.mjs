@@ -32,9 +32,8 @@
  * la dimensione giusta. Se il download fallisce, quel file resta su Supabase e si
  * riproverà domani: meglio occupare spazio in più che perdere l'unica copia.
  *
- * `GIORNI_DA_TENERE` a zero significa portare via tutto. Alzandolo si lascia sul
- * server una finestra recente — serve al reinvio di una scheda e alla riapertura del
- * PDF dallo storico, che leggono il file da lì.
+ * Sul server resta una finestra di `GIORNI_DA_TENERE` giorni: serve al reinvio di una
+ * scheda e alla riapertura del PDF dallo storico, che leggono il file da lì.
  */
 
 import { createWriteStream } from 'node:fs';
@@ -46,8 +45,16 @@ import { pipeline } from 'node:stream/promises';
 
 const BUCKET = ['schede', 'firme', 'foto'];
 
-/** Giorni da lasciare sul server. Zero: si porta via tutto. */
-const GIORNI_DA_TENERE = 0;
+/**
+ * Giorni da lasciare sul server prima di portare via un file.
+ *
+ * Una settimana lascia su Supabase circa 250 MB — dentro il gigabyte del piano
+ * gratuito con margine — e tiene rispedibili tutte le schede recenti: «Invia di nuovo»
+ * e il recupero automatico leggono il PDF da lì, e su una scheda di ieri quel bisogno
+ * è reale. Più indietro non serve: a quel punto il documento è nelle caselle di chi
+ * doveva riceverlo.
+ */
+const GIORNI_DA_TENERE = 7;
 
 // ── Configurazione ──────────────────────────────────────────────────────────────
 
