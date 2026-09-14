@@ -22,7 +22,7 @@ jobs:
 
           CORPO=$(mktemp)
           STATO=$(curl -sS -o "$CORPO" -w '%{http_code}' \
-            -X POST \
+            -X POST \   -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "x-report-secret: ${{ secrets.REPORT_SECRET }}" \
             -H 'Content-Type: application/json' \
             "${{ secrets.SUPABASE_URL }}/functions/v1/report-periodico?giorni=$GIORNI")
