@@ -41,6 +41,17 @@ const CHIAVE_SERVIZIO = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
  */
 const CHIAVE_SISTEMA = Deno.env.get('SISTEMA_SECRET') ?? '';
 
+/**
+ * Pausa fra un messaggio e il successivo della stessa scheda.
+ *
+ * Una conclusione può far partire quattro o cinque messaggi — la scheda completa più un
+ * estratto per ufficio — e presentarsi con tutte le richieste nello stesso istante non
+ * serve a nessuno: mezzo secondo l'uno non si nota in negozio.
+ */
+const PAUSA_FRA_INVII_MS = 500;
+
+const attendi = (ms: number) => new Promise((esegui) => setTimeout(esegui, ms));
+
 /** Sempre in copia, da §8.1 della specifica. */
 const COPIA_FISSA = ['contact2@carellidistribuzione.it', 'a.andriani@carellidistribuzione.it'];
 

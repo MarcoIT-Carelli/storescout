@@ -41,7 +41,7 @@ tutto, si copia e si incolla nel SQL Editor di Supabase.
 
 **Dati ancora mancanti** (vedi §14 della specifica)
 - Email dei sette destinatari attività — bloccante per l'invio delle schede
-- Credenziali SMTP Aruba e indirizzo mittente — bloccante per l'invio delle schede
+- ~~Credenziali SMTP~~ — risolto: l'invio passa dall'API di SendGrid (account aziendale Pro)
 - Elenco ispettori con email
 - Logo aziendale e colori istituzionali
 - Decisione su `EC` (e-commerce), oggi caricato come non attivo

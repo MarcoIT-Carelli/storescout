@@ -468,20 +468,24 @@ le sole righe a lui assegnate e le relative foto. Ne sono esclusi i destinatari 
 `richiede_verifica` (oggi CN, il capo negozio), che la scheda completa la ricevono già
 attraverso l'indirizzo del punto vendita.
 
-### 8.2 Configurazione SMTP Aruba
+### 8.2 Configurazione dell'invio
+
+**Aggiornato a settembre 2026.** L'invio passa dall'**API di SendGrid**, non da SMTP.
 
 ```
-Host:     smtps.aruba.it
-Porta:    465  (SSL/TLS implicito)   — in alternativa 587 con STARTTLS
-Utente:   [ACCOUNT ARUBA DA DEFINIRE]
-Password: [DA DEFINIRE — inserire in Supabase Secrets]
-From:     [INDIRIZZO MITTENTE DA DEFINIRE]
+Servizio: SendGrid (piano Pro aziendale, dominio già autenticato)
+Chiave:   secret SENDGRID_API_KEY, permesso "Mail Send" soltanto
+Mittente: secret SMTP_FROM — storescout@carellidistribuzione.it
+Regione:  secret SENDGRID_REGIONE=eu, quando la residenza UE sarà attiva sull'account
 ```
 
-> **Nota.** Per l'invio serve **solo SMTP**. Il protocollo POP3 serve unicamente a *leggere* la
-> posta e non è richiesto da questa applicazione.
-> Le credenziali vanno impostate come **Supabase Edge Function Secrets**
-> (`supabase secrets set SMTP_USER=... SMTP_PASS=...`) e non devono comparire nel codice
+> **Perché non SMTP.** Il primo tentativo usava l'SMTP di Aruba con `denomailer`, e non ha
+> retto: stabilire una connessione cifrata costa più CPU di quanta ne conceda una Edge
+> Function, che viene uccisa a metà handshake con un `CPU Time exceeded` — 3094 millisecondi
+> su circa 2000 disponibili. Non era il volume né il provider: era crittografia eseguita in
+> JavaScript. Una chiamata HTTPS costa una frazione di quel tempo.
+>
+> Le credenziali vivono nelle **Supabase Edge Function Secrets** e non compaiono nel codice
 > dell'app né nel repository.
 
 ### 8.3 Edge Function

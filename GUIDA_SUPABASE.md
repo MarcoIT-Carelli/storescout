@@ -275,14 +275,18 @@ supabase login
 supabase link --project-ref xxxxxxxx    # la sigla nel Project URL
 ```
 
-Le credenziali Aruba si impostano come *secrets*, mai nel codice:
+Le credenziali di invio si impostano come *secrets*, mai nel codice:
 
 ```bash
-supabase secrets set SMTP_HOST=smtps.aruba.it
-supabase secrets set SMTP_PORT=465
-supabase secrets set SMTP_USER=...
-supabase secrets set SMTP_PASS=...
+supabase secrets set SENDGRID_API_KEY=SG....
+supabase secrets set SMTP_FROM=storescout@carellidistribuzione.it
 ```
+
+> **Perché SendGrid e non SMTP.** Il primo tentativo usava l'SMTP di Aruba con
+> `denomailer`, e non ha retto: stabilire una connessione cifrata costa più CPU di
+> quanta ne conceda una Edge Function, che viene uccisa a metà handshake con un
+> `CPU Time exceeded`. Non è un problema di volume né di provider — è crittografia
+> eseguita in JavaScript. Una chiamata HTTPS a un'API costa una frazione di quel tempo.
 
 E la funzione si pubblica con:
 

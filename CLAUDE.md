@@ -21,7 +21,7 @@ expo-print per il PDF · EAS Build e EAS Update · distribuzione APK diretta, no
 ## Regole di lavoro
 
 **Fermati quando serve un'azione che solo l'utente può fare.** Non hai accesso al dashboard
-Supabase, ai secret di GitHub, all'account Expo né alle credenziali Aruba. Quando
+Supabase, ai secret di GitHub, all'account Expo né a quello SendGrid. Quando
 un'implementazione dipende da una di queste, interrompi il lavoro, spiega in una riga cosa
 serve e rimanda al passo preciso della guida. Non proseguire con valori inventati, segnaposto
 o credenziali scritte nel codice in attesa di sostituzione.
@@ -32,7 +32,7 @@ I punti in cui questo succede sono noti in anticipo:
 |---|---|---|
 | Milestone 1, dopo il primo push | attivare il keep-alive: creare i secret `SUPABASE_URL` e `SUPABASE_ANON_KEY` e copiare `keep-alive.yml` | guida Supabase, passo 10 |
 | Milestone 1, dopo il primo push | attivare il backup: quattro secret, fra cui la stringa Session pooler e la chiave `service_role` | guida Supabase, passo 11 |
-| Milestone 8, prima di scrivere la Edge Function | `supabase login`, `supabase link` e impostare i secret SMTP Aruba | guida Supabase, passo 12 |
+| Milestone 8, prima di scrivere la Edge Function | `supabase login`, `supabase link` e impostare `SENDGRID_API_KEY` e `SMTP_FROM` | guida Supabase, passo 12 |
 | Milestone 8 | fornire le email dei sette destinatari attività e l'indirizzo mittente | specifica, §14 |
 
 Quando arrivi a uno di questi punti, dillo esplicitamente e aspetta conferma che sia stato
@@ -181,7 +181,7 @@ I dati di prova sono stati eliminati e il progressivo delle ispezioni riazzerato
 contatore e' una sequenza separata.
 
 **Milestone 8 — invio email.** Completata. `supabase/functions/invia-scheda` compone i
-destinatari secondo §8.1, scarica il PDF da Storage, spedisce via SMTP Aruba e registra
+destinatari secondo §8.1, scarica il PDF da Storage, spedisce con l'API di SendGrid e registra
 l'esito in `invii_email` portando l'ispezione a `inviata` o `errore_invio`. L'app la chiama
 al termine della conclusione e dal pulsante "Riprova invio".
 
@@ -357,8 +357,8 @@ e un `undefined` al posto di `null` fa fallire la conclusione di una scheda già
   salvata**: il vincolo non è lo spazio su Storage ma il peso massimo di un messaggio di
   posta, e dodici megapixel appena usciti dalla fotocamera sono tre megabyte l'uno. Ridotta
   pesa circa 400 KB e mostra comunque uno scaffale o una scadenza sull'etichetta. Il tetto
-  di 15 MB per scheda resta come rete di sicurezza — Aruba accetta 25 MB, ma il base64
-  aggiunge un terzo — e con questi numeri non dovrebbe scattare quasi mai.
+  di 15 MB per scheda resta come rete di sicurezza, e con questi numeri non dovrebbe
+  scattare quasi mai.
 
   Il controllo sta in due punti e non è una ripetizione inutile: `validaBozza` blocca la
   conclusione con le foto ancora togliibili, mentre la Edge Function si difende da sola
@@ -457,15 +457,9 @@ per ogni ufficio** toccato dalle attività. Con tutti e sette i destinatari conf
 sta fra gli **80 e i 100 messaggi al giorno**, concentrati nelle ore in cui gli ispettori
 sono in negozio.
 
-Il rischio non è il totale giornaliero — Aruba ne ammette qualche centinaio — ma la
-**frequenza**: una conclusione fa partire quattro o cinque messaggi di fila, ed è quello che
-fa scattare i limiti. Per questo fra un invio e il successivo c'è mezzo secondo di pausa, e
-tutti passano da una sola connessione aperta una volta.
-
-Se i limiti della casella non bastassero, la strada non è la whitelist per IP: **le Edge
-Function girano su infrastruttura condivisa senza indirizzi fissi**, quindi non c'è niente
-da mettere fra le eccezioni. L'aumento va chiesto sull'account, o si passa a un servizio di
-invio dedicato.
+Il piano SendGrid in uso è un Pro da 100.000 messaggi al mese: il consumo previsto è il 2%.
+Resta mezzo secondo di pausa fra un invio e il successivo della stessa scheda — non serve
+più a schivare un limite, ma a non presentarsi con quattro richieste nello stesso istante.
 
 ### Le email non passano più da SMTP
 
@@ -475,8 +469,12 @@ via SMTP Aruba.
 Il motivo sta in una riga di log: `CPU Time exceeded`, **3094 millisecondi consumati** su
 circa 2000 concessi. Stabilire una connessione SMTP cifrata è crittografia pesante eseguita
 in JavaScript, e per una Edge Function è troppo. All'inizio passava per un soffio — cinque
-report spediti — poi ha smesso, e da lì ogni invio moriva con un `546` che sembrava un
-blocco di Aruba e non lo era.
+report spediti — poi ha smesso, e da lì ogni invio moriva con un `546`.
+
+**Per ore l'ipotesi è stata un blocco di Aruba per troppe connessioni ravvicinate**, ed era
+sbagliata: il volume non c'entrava niente, né la frequenza, né il provider. Vale la pena
+ricordarlo, perché quel `546` porta fuori strada — sembra un problema di quota e invece è
+un limite di calcolo.
 
 Ci sono volute ore per arrivarci perché il `546` è opaco: il worker viene ucciso **prima**
 di qualunque errore applicativo, quindi nessun `try/catch` lo vede e nessun timeout scatta.
@@ -484,13 +482,18 @@ La strada che ha funzionato è stata la bisezione con sonde (`?ping=1`, `?prova=
 `?prova=html`), che ha escluso letture, aggregazioni e composizione e ha lasciato solo
 l'invio.
 
-**Brevo e non un servizio americano**: i messaggi portano firme di persone fisiche e nomi di
-dipendenti, e il progetto tiene i dati in UE — è lo stesso motivo per cui il database sta a
-Francoforte. Il volume regge: 300 messaggi al giorno gratuiti contro gli 80-100 che servono.
+Si usa l'account SendGrid aziendale già esistente, piano Pro: il dominio è autenticato
+(`em3567.carellidistribuzione.it`), quindi si spedisce da `storescout@carellidistribuzione.it`
+senza toccare il DNS, e 100.000 messaggi al mese contro i 2.200 che servono.
 
-I secret SMTP restano impostati ma non sono più letti, tranne `SMTP_FROM` che fa da
-indirizzo mittente. Il tetto agli allegati scende a **7 MB**: Brevo ne accetta 10, e il
-conto si fa sui byte del file mentre in base64 viaggia un terzo in più.
+**La residenza europea dei dati resta da sistemare.** Il piano la consente ma l'account non
+ce l'ha attiva: l'endpoint `api.eu.sendgrid.com` risponde *«User is not authorized to send
+mail based on their regional attribute»*. Quando verrà attivata basta impostare
+`SENDGRID_REGIONE=eu`, senza toccare il codice. Non è un dettaglio formale: questi allegati
+portano firme di persone fisiche, ed è lo stesso motivo per cui il database sta a Francoforte.
+
+Dei secret SMTP resta letto solo `SMTP_FROM`, che fa da indirizzo mittente; gli altri
+(`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`) non servono più.
 
 ### L'invio ritenta da solo
 
@@ -546,20 +549,6 @@ una Edge Function priva di quell'header, prima ancora di eseguirla, e il segreto
 controllo nostro — non verrebbe mai letto. Il primo tentativo di schedulazione si è fermato
 lì con un 401 che sembrava un segreto sbagliato. I destinatari stanno in
 `REPORT_DESTINATARI`, separati da virgola: cambiarli non richiede di toccare il codice.
-
-**Da chiarire: l'invio si è fermato.** Dopo cinque report spediti senza problemi, ogni
-chiamata successiva muore con `546 WORKER_RESOURCE_LIMIT`. La bisezione dice che letture,
-aggregazioni e composizione HTML stanno in piedi (`?ping=1` e `?prova=smtp` restano nel
-codice per rifarla), le credenziali SMTP sono quelle giuste, e il blocco è sulla `send` di
-denomailer — **anche spedendo solo testo, quindi non è il contenuto**. Il worker viene
-ucciso in 4–14 secondi prima che scatti la scadenza di 20: non è un'attesa passiva, è CPU
-bruciata, il che fa pensare a un ciclo di ritentativi della libreria contro un server che
-rifiuta la connessione.
-
-L'ipotesi in piedi è un blocco temporaneo di Aruba per troppe connessioni ravvicinate dallo
-stesso account — cinque invii in pochi minuti durante il collaudo. **Se è così riguarda
-anche `invia-scheda`**, che usa le stesse credenziali, ed è la prima cosa da controllare.
-Va riprovato a distanza di ore, non di minuti.
 
 Qui il non-2xx in caso di errore è corretto, al contrario di `invia-scheda`: non c'è nessuno
 davanti a uno schermo che deve leggere il messaggio, e chi schedula deve accorgersi che è
