@@ -37,6 +37,16 @@ const SMTP_PASS = Deno.env.get('SMTP_PASS') ?? '';
 const SMTP_FROM = Deno.env.get('SMTP_FROM') || SMTP_USER;
 
 /**
+ * TLS implicito sulla 465, STARTTLS altrove.
+ *
+ * Aruba accetta entrambe le strade — 465 con TLS dall'inizio, 587 che parte in chiaro e
+ * si cifra subito dopo — e quale delle due funzioni meglio non si sa finché non la si
+ * prova. Legandolo alla porta, cambiare strada è cambiare un secret e basta, senza
+ * toccare il codice né rimettere mano al deploy.
+ */
+const SMTP_TLS_IMPLICITO = SMTP_PORT === 465;
+
+/**
  * Pausa fra un messaggio e il successivo della stessa scheda.
  *
  * Una conclusione può far partire quattro o cinque messaggi — la scheda completa più un
@@ -47,6 +57,26 @@ const SMTP_FROM = Deno.env.get('SMTP_FROM') || SMTP_USER;
 const PAUSA_FRA_INVII_MS = 500;
 
 const attendi = (ms: number) => new Promise((esegui) => setTimeout(esegui, ms));
+
+/**
+ * Abbandona un'attesa che non finisce.
+ *
+ * Un server di posta che non risponde tiene il worker fino al limite della piattaforma,
+ * che lo uccide con un `546 WORKER_RESOURCE_LIMIT`: all'ispettore arriverebbe quel
+ * codice al posto di una spiegazione, e la scheda resterebbe senza nemmeno un tentativo
+ * registrato in `invii_email`.
+ */
+function conScadenza<T>(lavoro: Promise<T>, secondi: number, cosa: string): Promise<T> {
+  return Promise.race([
+    lavoro,
+    new Promise<never>((_, rifiuta) =>
+      setTimeout(
+        () => rifiuta(new Error(`${cosa}: il server di posta non ha risposto entro ${secondi} secondi`)),
+        secondi * 1000,
+      ),
+    ),
+  ]);
+}
 
 /** Sempre in copia, da §8.1 della specifica. */
 const COPIA_FISSA = ['contact2@carellidistribuzione.it', 'a.andriani@carellidistribuzione.it'];
@@ -315,12 +345,13 @@ Deno.serve(async (req) => {
       connection: {
         hostname: SMTP_HOST,
         port: SMTP_PORT,
-        tls: true,
+        tls: SMTP_TLS_IMPLICITO,
         auth: { username: SMTP_USER, password: SMTP_PASS },
       },
     });
 
-    await client.send({
+    await conScadenza(
+      client.send({
       from: `StoreScout <${SMTP_FROM}>`,
       to: destinatariA,
       cc,
@@ -335,7 +366,10 @@ Deno.serve(async (req) => {
         },
         ...allegatiFoto.map(({ perUfficio: _, ...allegato }) => allegato),
       ],
-    });
+      }),
+      25,
+      'Invio della scheda',
+    );
     /**
      * Poi un messaggio per ufficio, ciascuno con il suo estratto.
      *

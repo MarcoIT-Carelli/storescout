@@ -32,11 +32,13 @@ export function validaBozza(bozza: Bozza): Problema[] {
   if (!bozza.niente_da_rilevare) {
     righe.forEach((r, i) => {
       const n = i + 1;
+      // Con l'articolo attaccato: «scadenza» è femminile, e un elenco che lo aggiunge
+      // da sé produce «manca il scadenza».
       const mancanti: string[] = [];
-      if (!r.destinatario_id) mancanti.push('destinatario');
-      if (!r.reparto_id) mancanti.push('reparto');
-      if (!r.tipo_intervento_id) mancanti.push('tipo di intervento');
-      if (!r.scadenza_data && !r.scadenza_testo.trim()) mancanti.push('scadenza');
+      if (!r.destinatario_id) mancanti.push('il destinatario');
+      if (!r.reparto_id) mancanti.push('il reparto');
+      if (!r.tipo_intervento_id) mancanti.push('il tipo di intervento');
+      if (!r.scadenza_data && !r.scadenza_testo.trim()) mancanti.push('la scadenza');
 
       if (mancanti.length > 0) {
         problemi.push({
@@ -97,6 +99,6 @@ export function validaBozza(bozza: Bozza): Problema[] {
 }
 
 function elenco(voci: string[]): string {
-  if (voci.length === 1) return `il ${voci[0]}`;
-  return `${voci.slice(0, -1).map((v) => `il ${v}`).join(', ')} e ${`il ${voci[voci.length - 1]}`}`;
+  if (voci.length === 1) return voci[0];
+  return `${voci.slice(0, -1).join(', ')} e ${voci[voci.length - 1]}`;
 }

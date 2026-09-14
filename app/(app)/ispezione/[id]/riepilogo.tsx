@@ -59,6 +59,33 @@ export default function Riepilogo() {
 
   const senzaIndirizzo = destinatariEmail.filter((d) => !d.email).length;
 
+  /**
+   * Le righe in copia, senza ripetere lo stesso indirizzo.
+   *
+   * Un ufficio può avere la casella dell'ispettore che ci lavora — EDP è il caso —
+   * e vederselo elencato due volte fa pensare che la mail parta doppia. Non parte
+   * doppia: la funzione di invio deduplica già, qui si deduplica quello che si legge.
+   */
+  const copiaConoscenza = useMemo(() => {
+    const righe: { chiave: string; testo: string; mancante: boolean }[] = [];
+    const visti = new Set<string>();
+    const aggiungi = (email: string | null, etichetta: string) => {
+      if (email) {
+        const chiave = email.trim().toLowerCase();
+        if (visti.has(chiave)) return;
+        visti.add(chiave);
+        righe.push({ chiave, testo: email, mancante: false });
+      } else {
+        righe.push({ chiave: etichetta, testo: `${etichetta} — indirizzo non ancora impostato`, mancante: true });
+      }
+    };
+
+    COPIA_FISSA.forEach((e) => aggiungi(e, e));
+    if (profilo) aggiungi(profilo.email, profilo.email);
+    destinatariEmail.forEach((d) => aggiungi(d.email, d.nome));
+    return righe;
+  }, [profilo, destinatariEmail]);
+
   if (caricamento || !bozza) {
     return (
       <Schermata titolo="Riepilogo" indietro>
@@ -182,17 +209,8 @@ export default function Riepilogo() {
             DESTINATARI DELLA SCHEDA
           </Text>
           <Riga etichetta="A" valore={pdv?.email ?? 'indirizzo del punto vendita non presente in anagrafica'} />
-          {COPIA_FISSA.map((e) => (
-            <Riga key={e} etichetta="Cc" valore={e} />
-          ))}
-          {profilo ? <Riga etichetta="Cc" valore={profilo.email} /> : null}
-          {destinatariEmail.map((d) => (
-            <Riga
-              key={d.nome}
-              etichetta="Cc"
-              valore={d.email ?? `${d.nome} — indirizzo non ancora impostato`}
-              mancante={!d.email}
-            />
+          {copiaConoscenza.map((c) => (
+            <Riga key={c.chiave} etichetta="Cc" valore={c.testo} mancante={c.mancante} />
           ))}
 
           {senzaIndirizzo > 0 ? (

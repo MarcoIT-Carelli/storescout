@@ -29,6 +29,16 @@ const SMTP_USER = Deno.env.get('SMTP_USER') ?? '';
 const SMTP_PASS = Deno.env.get('SMTP_PASS') ?? '';
 const SMTP_FROM = Deno.env.get('SMTP_FROM') || SMTP_USER;
 
+/**
+ * TLS implicito sulla 465, STARTTLS altrove.
+ *
+ * Aruba accetta entrambe le strade — 465 con TLS dall'inizio, 587 che parte in chiaro e
+ * si cifra subito dopo — e quale delle due funzioni meglio non si sa finché non la si
+ * prova. Legandolo alla porta, cambiare strada è cambiare un secret e basta, senza
+ * toccare il codice né rimettere mano al deploy.
+ */
+const SMTP_TLS_IMPLICITO = SMTP_PORT === 465;
+
 /** Chi riceve il riepilogo: indirizzi separati da virgola, impostati fra i secret. */
 const DESTINATARI = (Deno.env.get('REPORT_DESTINATARI') ?? '')
   .split(',')
@@ -398,7 +408,7 @@ Deno.serve(async (req) => {
       connection: {
         hostname: SMTP_HOST,
         port: SMTP_PORT,
-        tls: true,
+        tls: SMTP_TLS_IMPLICITO,
         auth: { username: SMTP_USER, password: SMTP_PASS },
       },
     });
