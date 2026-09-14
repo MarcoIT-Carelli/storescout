@@ -479,6 +479,20 @@ controllo nostro — non verrebbe mai letto. Il primo tentativo di schedulazione
 lì con un 401 che sembrava un segreto sbagliato. I destinatari stanno in
 `REPORT_DESTINATARI`, separati da virgola: cambiarli non richiede di toccare il codice.
 
+**Da chiarire: l'invio si è fermato.** Dopo cinque report spediti senza problemi, ogni
+chiamata successiva muore con `546 WORKER_RESOURCE_LIMIT`. La bisezione dice che letture,
+aggregazioni e composizione HTML stanno in piedi (`?ping=1` e `?prova=smtp` restano nel
+codice per rifarla), le credenziali SMTP sono quelle giuste, e il blocco è sulla `send` di
+denomailer — **anche spedendo solo testo, quindi non è il contenuto**. Il worker viene
+ucciso in 4–14 secondi prima che scatti la scadenza di 20: non è un'attesa passiva, è CPU
+bruciata, il che fa pensare a un ciclo di ritentativi della libreria contro un server che
+rifiuta la connessione.
+
+L'ipotesi in piedi è un blocco temporaneo di Aruba per troppe connessioni ravvicinate dallo
+stesso account — cinque invii in pochi minuti durante il collaudo. **Se è così riguarda
+anche `invia-scheda`**, che usa le stesse credenziali, ed è la prima cosa da controllare.
+Va riprovato a distanza di ore, non di minuti.
+
 Qui il non-2xx in caso di errore è corretto, al contrario di `invia-scheda`: non c'è nessuno
 davanti a uno schermo che deve leggere il messaggio, e chi schedula deve accorgersi che è
 andata male.

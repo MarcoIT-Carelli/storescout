@@ -1,4 +1,3 @@
-import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts';
 
 /**
@@ -13,6 +12,12 @@ import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts';
  *
  * Viene chiamata da fuori — oggi da una GitHub Action schedulata — e si difende con un
  * segreto proprio: è l'unica funzione del progetto che nessun utente dell'app invoca.
+ *
+ * **Legge con `fetch` e non con `supabase-js`.** Con entrambe le librerie importate la
+ * funzione superava il limite di risorse della piattaforma e rispondeva `546` a ogni
+ * chiamata, riavvio a freddo compreso. Per tre query in sola lettura un client intero è
+ * sovrabbondante: PostgREST è un'API REST, e `denomailer` — che serve davvero, perché
+ * l'invio è SMTP — resta l'unica dipendenza pesante.
  */
 
 const URL_SUPABASE = Deno.env.get('SUPABASE_URL')!;
@@ -33,6 +38,39 @@ const DESTINATARI = (Deno.env.get('REPORT_DESTINATARI') ?? '')
 /** Segreto condiviso con chi schedula la chiamata. */
 const CHIAVE_REPORT = Deno.env.get('REPORT_SECRET') ?? '';
 
+/** Lettura da PostgREST con la chiave di servizio. `query` è già in forma di URL. */
+async function leggi<T>(tabella: string, query: string): Promise<T[]> {
+  const r = await fetch(`${URL_SUPABASE}/rest/v1/${tabella}?${query}`, {
+    headers: {
+      apikey: CHIAVE_SERVIZIO,
+      Authorization: `Bearer ${CHIAVE_SERVIZIO}`,
+      Accept: 'application/json',
+    },
+  });
+  if (!r.ok) throw new Error(`${tabella}: ${r.status} ${await r.text()}`);
+  return (await r.json()) as T[];
+}
+
+/**
+ * Abbandona un'attesa che non finisce.
+ *
+ * Senza, un server di posta che non risponde tiene il worker fino al limite della
+ * piattaforma, che lo uccide con un `546 WORKER_RESOURCE_LIMIT` — un messaggio che non
+ * dice niente a chi legge il log della schedulazione. Meglio un errore che nomina la
+ * causa e il tempo aspettato.
+ */
+function conScadenza<T>(lavoro: Promise<T>, secondi: number, cosa: string): Promise<T> {
+  return Promise.race([
+    lavoro,
+    new Promise<never>((_, rifiuta) =>
+      setTimeout(
+        () => rifiuta(new Error(`${cosa}: nessuna risposta entro ${secondi} secondi`)),
+        secondi * 1000,
+      ),
+    ),
+  ]);
+}
+
 const risposta = (corpo: unknown, stato = 200) =>
   new Response(JSON.stringify(corpo), {
     status: stato,
@@ -47,18 +85,25 @@ const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 type IspezioneLetta = {
-  id: string;
   numero: number;
-  data_ispezione: string;
-  stato: string;
   voto: number | null;
   rotture_stock_promo: number | null;
-  in_verifica: boolean;
-  niente_da_rilevare: boolean;
   pdv: { codice: string; citta: string } | null;
-  profili: { nome: string; cognome: string } | null;
   ispezione_attivita: { destinatari: { nome: string } | null; reparti: { nome: string } | null }[];
 };
+
+type ApertaLetta = {
+  numero: number;
+  data_ispezione: string;
+  pdv: { codice: string; citta: string } | null;
+  ispezione_attivita: {
+    scadenza_data: string | null;
+    scadenza_testo: string | null;
+    destinatari: { nome: string; richiede_verifica: boolean } | null;
+  }[];
+};
+
+type FermaLetta = { numero: number; pdv: { codice: string } | null };
 
 /**
  * Stili scritti a mano su ogni elemento.
@@ -118,6 +163,10 @@ function numeroni(voci: [string, string | number][]): string {
 }
 
 Deno.serve(async (req) => {
+  // Sonda diagnostica: risponde prima di toccare database e posta. Serve a distinguere
+  // un problema di avvio del modulo da uno del lavoro che la funzione fa.
+  if (new URL(req.url).searchParams.has('ping')) return risposta({ ok: true });
+
   if (req.method !== 'POST') return risposta({ errore: 'Metodo non consentito.' }, 405);
 
   // Nessun utente dell'app chiama questa funzione: il permesso è un segreto condiviso
@@ -134,23 +183,22 @@ Deno.serve(async (req) => {
   const da = new Date();
   da.setDate(da.getDate() - giorni + 1);
 
-  const servizio = createClient(URL_SUPABASE, CHIAVE_SERVIZIO, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  let ispezioni: IspezioneLetta[];
+  let aperte: ApertaLetta[];
+  let ferme: FermaLetta[];
 
-  const { data, error } = await servizio
-    .from('ispezioni')
-    .select(
-      'id, numero, data_ispezione, stato, voto, rotture_stock_promo, in_verifica, niente_da_rilevare, pdv(codice, citta), profili(nome, cognome), ispezione_attivita(destinatari(nome), reparti(nome))',
-    )
-    .neq('stato', 'bozza')
-    .gte('data_ispezione', dataISO(da))
-    .lte('data_ispezione', dataISO(a))
-    .order('data_ispezione', { ascending: false });
-
-  if (error) return risposta({ errore: `Lettura non riuscita: ${error.message}` }, 500);
-
-  const ispezioni = (data ?? []) as unknown as IspezioneLetta[];
+  try {
+  // Solo le colonne che finiscono nel report: ogni campo in più è lavoro che la
+  // funzione fa per niente, e qui il margine è stretto.
+  ispezioni = await leggi<IspezioneLetta>(
+    'ispezioni',
+    [
+      'select=numero,voto,rotture_stock_promo,pdv(codice,citta),ispezione_attivita(destinatari(nome),reparti(nome))',
+      'stato=neq.bozza',
+      `data_ispezione=gte.${dataISO(da)}`,
+      `data_ispezione=lte.${dataISO(a)}`,
+    ].join('&'),
+  );
 
   /**
    * Le schede rimaste aperte si leggono senza limite di periodo.
@@ -159,40 +207,27 @@ Deno.serve(async (req) => {
    * e restringendo agli ultimi sette giorni sparirebbe dal report esattamente quando
    * comincia a diventare un problema. Stessa cosa per le schede mai partite.
    */
-  const { data: aperteGrezze } = await servizio
-    .from('ispezioni')
-    .select(
-      'numero, data_ispezione, pdv(codice, citta), profili(nome, cognome), ispezione_attivita(scadenza_data, scadenza_testo, destinatari(nome, richiede_verifica))',
-    )
-    .eq('in_verifica', true)
-    .order('data_ispezione', { ascending: true });
+  aperte = await leggi<ApertaLetta>(
+    'ispezioni',
+    [
+      'select=numero,data_ispezione,pdv(codice,citta),ispezione_attivita(scadenza_data,scadenza_testo,destinatari(nome,richiede_verifica))',
+      'in_verifica=is.true',
+      'order=data_ispezione.asc',
+    ].join('&'),
+  );
 
-  const { data: fermeGrezze } = await servizio
-    .from('ispezioni')
-    .select('numero, data_ispezione, stato, pdv(codice)')
-    .in('stato', ['conclusa', 'errore_invio'])
-    .order('data_ispezione', { ascending: true })
-    .limit(20);
-
-  type ApertaLetta = {
-    numero: number;
-    data_ispezione: string;
-    pdv: { codice: string; citta: string } | null;
-    profili: { nome: string; cognome: string } | null;
-    ispezione_attivita: {
-      scadenza_data: string | null;
-      scadenza_testo: string | null;
-      destinatari: { nome: string; richiede_verifica: boolean } | null;
-    }[];
-  };
-
-  const aperte = (aperteGrezze ?? []) as unknown as ApertaLetta[];
-  const ferme = (fermeGrezze ?? []) as unknown as {
-    numero: number;
-    data_ispezione: string;
-    stato: string;
-    pdv: { codice: string } | null;
-  }[];
+  ferme = await leggi<FermaLetta>(
+    'ispezioni',
+    [
+      'select=numero,pdv(codice)',
+      'stato=in.(conclusa,errore_invio)',
+      'order=data_ispezione.asc',
+      'limit=20',
+    ].join('&'),
+  );
+  } catch (e) {
+    return risposta({ errore: e instanceof Error ? e.message : String(e) }, 500);
+  }
 
   const oggi = new Date();
   oggi.setHours(0, 0, 0, 0);
@@ -344,6 +379,20 @@ Deno.serve(async (req) => {
     </p>
   </body></html>`;
 
+  if (new URL(req.url).searchParams.get('prova') === 'smtp') {
+    // Solo la presenza delle credenziali: la connessione denomailer la apre al primo
+    // invio, e non c'è modo di provarla senza spedire davvero.
+    return risposta({
+      fase: 'smtp',
+      host: SMTP_HOST || '(vuoto)',
+      porta: SMTP_PORT,
+      utente: SMTP_USER ? 'impostato' : '(vuoto)',
+      password: SMTP_PASS ? 'impostata' : '(vuota)',
+      mittente: SMTP_FROM || '(vuoto)',
+      destinatari: DESTINATARI.length,
+    });
+  }
+
   try {
     const client = new SMTPClient({
       connection: {
@@ -354,12 +403,30 @@ Deno.serve(async (req) => {
       },
     });
 
-    await client.send({
+    await conScadenza(
+      client.send({
       from: `StoreScout <${SMTP_FROM}>`,
       to: DESTINATARI,
       subject: `StoreScout — riepilogo ${periodo}`,
+      // La parte testuale va data esplicitamente: senza, denomailer prova a ricavarla
+      // dall'HTML per conto suo. È anche la forma giusta di un'email — chi legge in
+      // solo testo trova qualcosa invece di una pagina di marcatori.
+      content: [
+        `StoreScout — riepilogo ${periodo}`,
+        '',
+        `Ispezioni: ${ispezioni.length}`,
+        `Attività: ${attivitaTotali}`,
+        `Voto medio: ${votoMedio}`,
+        `Rotture promo: ${rotture}`,
+        `Schede da chiudere: ${aperte.length}`,
+        '',
+        'Il dettaglio è nella versione HTML di questo messaggio.',
+      ].join('\n'),
       html,
-    });
+      }),
+      20,
+      'Invio del report',
+    );
     await client.close();
 
     return risposta({
