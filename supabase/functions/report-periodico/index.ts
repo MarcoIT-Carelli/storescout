@@ -108,6 +108,55 @@ Deno.serve(async (req) => {
 
   const ispezioni = (data ?? []) as unknown as IspezioneLetta[];
 
+  /**
+   * Le schede rimaste aperte si leggono senza limite di periodo.
+   *
+   * Una verifica ferma da tre settimane è proprio quella di cui c'è bisogno di sapere,
+   * e restringendo agli ultimi sette giorni sparirebbe dal report esattamente quando
+   * comincia a diventare un problema. Stessa cosa per le schede mai partite.
+   */
+  const { data: aperteGrezze } = await servizio
+    .from('ispezioni')
+    .select(
+      'numero, data_ispezione, pdv(codice, citta), profili(nome, cognome), ispezione_attivita(scadenza_data, scadenza_testo, destinatari(nome, richiede_verifica))',
+    )
+    .eq('in_verifica', true)
+    .order('data_ispezione', { ascending: true });
+
+  const { data: fermeGrezze } = await servizio
+    .from('ispezioni')
+    .select('numero, data_ispezione, stato, pdv(codice)')
+    .in('stato', ['conclusa', 'errore_invio'])
+    .order('data_ispezione', { ascending: true })
+    .limit(20);
+
+  type ApertaLetta = {
+    numero: number;
+    data_ispezione: string;
+    pdv: { codice: string; citta: string } | null;
+    profili: { nome: string; cognome: string } | null;
+    ispezione_attivita: {
+      scadenza_data: string | null;
+      scadenza_testo: string | null;
+      destinatari: { nome: string; richiede_verifica: boolean } | null;
+    }[];
+  };
+
+  const aperte = (aperteGrezze ?? []) as unknown as ApertaLetta[];
+  const ferme = (fermeGrezze ?? []) as unknown as {
+    numero: number;
+    data_ispezione: string;
+    stato: string;
+    pdv: { codice: string } | null;
+  }[];
+
+  const oggi = new Date();
+  oggi.setHours(0, 0, 0, 0);
+  const giorniDa = (iso: string) => {
+    const [aa, mm, gg] = iso.split('-').map(Number);
+    return Math.round((oggi.getTime() - new Date(aa, mm - 1, gg).getTime()) / 86400000);
+  };
+
   // --- Aggregazioni ---
   // In memoria e non in SQL: qualche centinaio di righe a settimana non giustifica una
   // vista da mantenere, e qui i conteggi restano accanto al testo che li spiega.
@@ -151,8 +200,14 @@ Deno.serve(async (req) => {
     .slice(0, 5);
 
   const rotture = ispezioni.reduce((s, i) => s + (i.rotture_stock_promo ?? 0), 0);
-  const daChiudere = ispezioni.filter((i) => i.in_verifica).length;
-  const nonInviate = ispezioni.filter((i) => i.stato === 'errore_invio' || i.stato === 'conclusa');
+
+  const rotturePerPdv = new Map<string, number>();
+  for (const i of ispezioni) {
+    if (!i.rotture_stock_promo) continue;
+    const voce = `${i.pdv?.codice ?? '??'} — ${i.pdv?.citta ?? ''}`;
+    rotturePerPdv.set(voce, (rotturePerPdv.get(voce) ?? 0) + i.rotture_stock_promo);
+  }
+
   const ordinate = (m: Map<string, number>) =>
     [...m.entries()].sort((x, y) => y[1] - x[1]) as [string, number][];
 
@@ -182,6 +237,7 @@ Deno.serve(async (req) => {
       <div class="riquadro"><span class="valore">${attivitaTotali}</span><span class="etichetta">Attività</span></div>
       <div class="riquadro"><span class="valore">${votoMedio}</span><span class="etichetta">Voto medio</span></div>
       <div class="riquadro"><span class="valore">${rotture}</span><span class="etichetta">Rotture promo</span></div>
+      <div class="riquadro"><span class="valore">${aperte.length}</span><span class="etichetta">Da chiudere</span></div>
     </div>
 
     <h2>Attività per destinatario</h2>
@@ -190,18 +246,62 @@ Deno.serve(async (req) => {
     <h2>Attività per reparto</h2>
     ${tabella(['Reparto', 'Attività'], ordinate(perReparto))}
 
+    <h2>Rotture di stock promo sala</h2>
+    ${tabella(['Punto vendita', 'Rotture'], ordinate(rotturePerPdv))}
+
     <h2>Punti vendita con il voto più basso</h2>
     ${tabella(
       ['Punto vendita', 'Voto medio'],
       bassi.map((b) => [`${b.codice} — ${b.citta}`, b.medio.toFixed(1)] as [string, string]),
     )}
 
+    <h2>Attività non ancora chiuse</h2>
     ${
-      daChiudere > 0 || nonInviate.length > 0
-        ? `<h2>Da guardare</h2><ul>
-            ${daChiudere > 0 ? `<li><strong>${daChiudere}</strong> ${daChiudere === 1 ? 'scheda resta' : 'schede restano'} da chiudere dopo la verifica.</li>` : ''}
-            ${nonInviate.length > 0 ? `<li><strong>${nonInviate.length}</strong> ${nonInviate.length === 1 ? 'scheda non è partita' : 'schede non sono partite'} per email: ${esc(nonInviate.map((i) => `n. ${i.numero}`).join(', '))}.</li>` : ''}
-          </ul>`
+      aperte.length === 0
+        ? '<p class="vuoto">Nessuna scheda in attesa di verifica.</p>'
+        : `<table style="max-width:660px">
+            <tr>
+              <th>Scheda</th><th>Punto vendita</th><th>Da verificare</th>
+              <th>Scadenza</th><th class="num">Giorni</th>
+            </tr>
+            ${aperte
+              .map((v) => {
+                const righe = (v.ispezione_attivita ?? []).filter(
+                  (r) => r.destinatari?.richiede_verifica,
+                );
+                const scadenze = righe
+                  .map((r) =>
+                    r.scadenza_data
+                      ? dataBreve(new Date(`${r.scadenza_data}T00:00:00`))
+                      : (r.scadenza_testo ?? '—'),
+                  )
+                  .join(' · ');
+                const eta = giorniDa(v.data_ispezione);
+                // Una scadenza a data già passata va segnalata: è il momento in cui
+                // quella riga smette di essere un promemoria e diventa un ritardo.
+                const scaduta = righe.some(
+                  (r) => r.scadenza_data && giorniDa(r.scadenza_data) > 0,
+                );
+                return `<tr${scaduta ? ' style="background:#FBF1E3"' : ''}>
+                  <td>n. ${v.numero}</td>
+                  <td>${esc(`${v.pdv?.codice ?? '??'} — ${v.pdv?.citta ?? ''}`)}</td>
+                  <td>${righe.length} ${righe.length === 1 ? 'attività' : 'attività'}</td>
+                  <td>${esc(scadenze || '—')}${scaduta ? ' <strong>(scaduta)</strong>' : ''}</td>
+                  <td class="num">${eta}</td>
+                </tr>`;
+              })
+              .join('')}
+          </table>
+          <p class="vuoto">L'elenco non si ferma al periodo del riepilogo: una verifica
+          ferma da settimane è proprio quella da vedere.</p>`
+    }
+
+    ${
+      ferme.length > 0
+        ? `<h2>Schede non partite</h2>
+           <p>${ferme.length === 1 ? 'Una scheda non è mai stata spedita' : `${ferme.length} schede non sono mai state spedite`}: ${esc(
+             ferme.map((f) => `n. ${f.numero} (${f.pdv?.codice ?? '??'})`).join(', '),
+           )}. Si rispediscono dal pannello di amministrazione.</p>`
         : ''
     }
 
