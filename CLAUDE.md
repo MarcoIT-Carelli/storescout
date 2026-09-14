@@ -520,6 +520,30 @@ sulle chiamate dai tablet resta identico.
 risolve insistendo: è un indirizzo sbagliato, una casella piena, un allegato irrecuperabile.
 Quelle schede restano nel pannello e nel riepilogo settimanale, da guardare a mano.
 
+### I file non restano su Supabase
+
+`strumenti/archivia.mjs`, da far girare una volta al giorno con l'Utilità di pianificazione
+di Windows.
+
+Il piano gratuito concede **1 GB di storage**, e con una ventina di ispezioni al giorno —
+PDF, estratti, firme e foto fanno circa 1,5 MB l'una — si riempie in poco più di un mese.
+Quando lo spazio finisce i caricamenti cominciano a fallire: le schede si concludono ma i
+file non si salvano.
+
+Invece di cancellare, lo strumento **porta tutto su un disco aziendale** e poi toglie da
+Supabase ciò che ha più di venti giorni **ed è già salvato in locale con la dimensione
+giusta**. Quell'«ed è già salvato» è la parte che conta: se il download di ieri è fallito,
+il file resta dov'è e si riproverà domani. Meglio occupare spazio in più che cancellare
+l'unica copia rimasta.
+
+Si autentica con **email e password di un utente dell'app**, non con la chiave di servizio:
+per leggere i file bastano i permessi di un ispettore, e una chiave che scavalca ogni regola
+non ha motivo di stare su un PC d'ufficio.
+
+Vale la pena ricordare che **l'archivio vero sono le caselle di posta dei destinatari**: il
+punto vendita e gli uffici il PDF ce l'hanno per sempre. Quello su Supabase è una copia di
+servizio, che serve al reinvio e alla riapertura dallo storico finché la scheda è recente.
+
 ### Il riepilogo settimanale
 
 `supabase/functions/report-periodico` più `.github/workflows/report-settimanale.yml`:
