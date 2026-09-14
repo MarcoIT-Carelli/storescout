@@ -461,6 +461,12 @@ se un ufficio ha poi fatto l'intervento: gli uffici l'app non la usano. Il repor
 in fondo, perché un numero che sembra dire una cosa e ne dice un'altra è peggio di un numero
 che manca.
 
+**L'HTML del report è scritto come si scrivevano le email vent'anni fa**: tabelle per il
+layout e stili inline su ogni elemento. Il primo tentativo usava `display: flex` e un foglio
+di stile nel `<head>`, e nella casella i riquadri dei numeri finivano uno sopra l'altro con
+le cifre addosso alle etichette — Outlook rende l'HTML con il motore di Word, e diversi
+client rimuovono del tutto il `<style>`.
+
 Le aggregazioni si fanno in memoria e non con viste SQL: qualche centinaio di righe a
 settimana non giustifica una vista da mantenere, e così i conteggi stanno accanto al testo
 che li spiega.

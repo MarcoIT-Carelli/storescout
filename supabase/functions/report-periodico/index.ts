@@ -60,16 +60,60 @@ type IspezioneLetta = {
   ispezione_attivita: { destinatari: { nome: string } | null; reparti: { nome: string } | null }[];
 };
 
-/** Tabella HTML da un elenco di coppie, con la riga più alta in cima. */
+/**
+ * Stili scritti a mano su ogni elemento.
+ *
+ * Nelle email il foglio di stile nel `<head>` viene rimosso da parecchi client, e
+ * `display: flex` non lo interpreta quasi nessuno — Outlook rende l'HTML con il motore
+ * di Word. Qui si usa quello che funziona ovunque da vent'anni: tabelle e attributi.
+ */
+const CELLA = 'border:1px solid #C9C9C4;padding:5px 8px;text-align:left;font-size:14px;';
+const CELLA_NUM = CELLA + 'text-align:right;width:88px;';
+const INTESTAZIONE =
+  CELLA +
+  'background:#F2F2EF;font-size:11px;text-transform:uppercase;letter-spacing:.4px;font-weight:700;';
+const INTESTAZIONE_NUM = INTESTAZIONE + 'text-align:right;width:88px;';
+const VUOTO = 'color:#6B6B66;font-style:italic;font-size:13px;';
+const TITOLO =
+  'font-size:15px;margin:22px 0 6px;border-bottom:2px solid #111111;padding-bottom:3px;';
+
+/** Tabella a due colonne, con la riga più alta in cima. */
 function tabella(intestazioni: [string, string], righe: [string, string | number][]): string {
   if (righe.length === 0) {
-    return '<p class="vuoto">Nessun dato nel periodo.</p>';
+    return `<p style="${VUOTO}">Nessun dato nel periodo.</p>`;
   }
-  return `<table>
-    <tr><th>${esc(intestazioni[0])}</th><th class="num">${esc(intestazioni[1])}</th></tr>
+  return `<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;width:100%;max-width:460px;">
+    <tr>
+      <th style="${INTESTAZIONE}">${esc(intestazioni[0])}</th>
+      <th style="${INTESTAZIONE_NUM}">${esc(intestazioni[1])}</th>
+    </tr>
     ${righe
-      .map(([voce, valore]) => `<tr><td>${esc(voce)}</td><td class="num">${esc(String(valore))}</td></tr>`)
+      .map(
+        ([voce, valore]) =>
+          `<tr><td style="${CELLA}">${esc(voce)}</td><td style="${CELLA_NUM}">${esc(String(valore))}</td></tr>`,
+      )
       .join('')}
+  </table>`;
+}
+
+/**
+ * La riga dei numeri grandi, come tabella a celle affiancate.
+ *
+ * Era un contenitore flex, e nei client di posta i riquadri finivano uno sopra
+ * l'altro con le cifre addosso alle etichette.
+ */
+function numeroni(voci: [string, string | number][]): string {
+  return `<table cellspacing="0" cellpadding="0" style="border-collapse:separate;border-spacing:8px 0;margin:0 0 6px -8px;">
+    <tr>
+      ${voci
+        .map(
+          ([etichetta, valore]) => `<td style="border:1px solid #C9C9C4;padding:10px 14px;text-align:center;">
+            <div style="font-size:22px;font-weight:800;line-height:1.1;">${esc(String(valore))}</div>
+            <div style="font-size:11px;text-transform:uppercase;color:#6B6B66;letter-spacing:.4px;margin-top:2px;">${esc(etichetta)}</div>
+          </td>`,
+        )
+        .join('')}
+    </tr>
   </table>`;
 }
 
@@ -213,56 +257,45 @@ Deno.serve(async (req) => {
 
   const periodo = `${dataBreve(da)} – ${dataBreve(a)}`;
 
-  const html = `<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><style>
-    body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #111111; font-size: 14px; }
-    h1 { font-size: 19px; margin: 0 0 2px; }
-    h2 { font-size: 15px; margin: 22px 0 6px; border-bottom: 2px solid #111111; padding-bottom: 3px; }
-    .periodo { color: #6B6B66; margin: 0 0 18px; }
-    .numeroni { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
-    .riquadro { border: 1px solid #C9C9C4; padding: 10px 14px; min-width: 96px; }
-    .valore { font-size: 22px; font-weight: 800; display: block; }
-    .etichetta { font-size: 11px; text-transform: uppercase; color: #6B6B66; letter-spacing: .4px; }
-    table { border-collapse: collapse; width: 100%; max-width: 460px; margin-top: 4px; }
-    th, td { border: 1px solid #C9C9C4; padding: 5px 8px; text-align: left; }
-    th { background: #F2F2EF; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; }
-    td.num, th.num { text-align: right; width: 84px; }
-    .vuoto { color: #6B6B66; font-style: italic; }
-    .nota { color: #6B6B66; font-size: 12px; margin-top: 26px; border-top: 1px solid #C9C9C4; padding-top: 8px; }
-  </style></head><body>
-    <h1>StoreScout — riepilogo attività</h1>
-    <p class="periodo">${periodo}</p>
+  const html = `<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"></head>
+  <body style="font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111111;font-size:14px;margin:0;padding:18px;">
+    <h1 style="font-size:19px;margin:0 0 2px;">StoreScout — riepilogo attività</h1>
+    <p style="color:#6B6B66;margin:0 0 18px;">${periodo}</p>
 
-    <div class="numeroni">
-      <div class="riquadro"><span class="valore">${ispezioni.length}</span><span class="etichetta">Ispezioni</span></div>
-      <div class="riquadro"><span class="valore">${attivitaTotali}</span><span class="etichetta">Attività</span></div>
-      <div class="riquadro"><span class="valore">${votoMedio}</span><span class="etichetta">Voto medio</span></div>
-      <div class="riquadro"><span class="valore">${rotture}</span><span class="etichetta">Rotture promo</span></div>
-      <div class="riquadro"><span class="valore">${aperte.length}</span><span class="etichetta">Da chiudere</span></div>
-    </div>
+    ${numeroni([
+      ['Ispezioni', ispezioni.length],
+      ['Attività', attivitaTotali],
+      ['Voto medio', votoMedio],
+      ['Rotture promo', rotture],
+      ['Da chiudere', aperte.length],
+    ])}
 
-    <h2>Attività per destinatario</h2>
+    <h2 style="${TITOLO}">Attività per destinatario</h2>
     ${tabella(['Destinatario', 'Attività'], ordinate(perDestinatario))}
 
-    <h2>Attività per reparto</h2>
+    <h2 style="${TITOLO}">Attività per reparto</h2>
     ${tabella(['Reparto', 'Attività'], ordinate(perReparto))}
 
-    <h2>Rotture di stock promo sala</h2>
+    <h2 style="${TITOLO}">Rotture di stock promo sala</h2>
     ${tabella(['Punto vendita', 'Rotture'], ordinate(rotturePerPdv))}
 
-    <h2>Punti vendita con il voto più basso</h2>
+    <h2 style="${TITOLO}">Punti vendita con il voto più basso</h2>
     ${tabella(
       ['Punto vendita', 'Voto medio'],
       bassi.map((b) => [`${b.codice} — ${b.citta}`, b.medio.toFixed(1)] as [string, string]),
     )}
 
-    <h2>Attività non ancora chiuse</h2>
+    <h2 style="${TITOLO}">Attività non ancora chiuse</h2>
     ${
       aperte.length === 0
-        ? '<p class="vuoto">Nessuna scheda in attesa di verifica.</p>'
-        : `<table style="max-width:660px">
+        ? `<p style="${VUOTO}">Nessuna scheda in attesa di verifica.</p>`
+        : `<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;width:100%;max-width:660px;">
             <tr>
-              <th>Scheda</th><th>Punto vendita</th><th>Da verificare</th>
-              <th>Scadenza</th><th class="num">Giorni</th>
+              <th style="${INTESTAZIONE}">Scheda</th>
+              <th style="${INTESTAZIONE}">Punto vendita</th>
+              <th style="${INTESTAZIONE}">Da verificare</th>
+              <th style="${INTESTAZIONE}">Scadenza</th>
+              <th style="${INTESTAZIONE_NUM}">Giorni</th>
             </tr>
             ${aperte
               .map((v) => {
@@ -279,35 +312,33 @@ Deno.serve(async (req) => {
                 const eta = giorniDa(v.data_ispezione);
                 // Una scadenza a data già passata va segnalata: è il momento in cui
                 // quella riga smette di essere un promemoria e diventa un ritardo.
-                const scaduta = righe.some(
-                  (r) => r.scadenza_data && giorniDa(r.scadenza_data) > 0,
-                );
-                return `<tr${scaduta ? ' style="background:#FBF1E3"' : ''}>
-                  <td>n. ${v.numero}</td>
-                  <td>${esc(`${v.pdv?.codice ?? '??'} — ${v.pdv?.citta ?? ''}`)}</td>
-                  <td>${righe.length} ${righe.length === 1 ? 'attività' : 'attività'}</td>
-                  <td>${esc(scadenze || '—')}${scaduta ? ' <strong>(scaduta)</strong>' : ''}</td>
-                  <td class="num">${eta}</td>
+                const scaduta = righe.some((r) => r.scadenza_data && giorniDa(r.scadenza_data) > 0);
+                const sfondo = scaduta ? 'background:#FBF1E3;' : '';
+                return `<tr>
+                  <td style="${CELLA}${sfondo}">n. ${v.numero}</td>
+                  <td style="${CELLA}${sfondo}">${esc(`${v.pdv?.codice ?? '??'} — ${v.pdv?.citta ?? ''}`)}</td>
+                  <td style="${CELLA}${sfondo}">${righe.length}</td>
+                  <td style="${CELLA}${sfondo}">${esc(scadenze || '—')}${scaduta ? ' <strong>(scaduta)</strong>' : ''}</td>
+                  <td style="${CELLA_NUM}${sfondo}">${eta}</td>
                 </tr>`;
               })
               .join('')}
           </table>
-          <p class="vuoto">L'elenco non si ferma al periodo del riepilogo: una verifica
-          ferma da settimane è proprio quella da vedere.</p>`
+          <p style="${VUOTO}">L’elenco non si ferma al periodo del riepilogo: una verifica ferma da settimane è proprio quella da vedere.</p>`
     }
 
     ${
       ferme.length > 0
-        ? `<h2>Schede non partite</h2>
+        ? `<h2 style="${TITOLO}">Schede non partite</h2>
            <p>${ferme.length === 1 ? 'Una scheda non è mai stata spedita' : `${ferme.length} schede non sono mai state spedite`}: ${esc(
              ferme.map((f) => `n. ${f.numero} (${f.pdv?.codice ?? '??'})`).join(', '),
            )}. Si rispediscono dal pannello di amministrazione.</p>`
         : ''
     }
 
-    <p class="nota">
+    <p style="color:#6B6B66;font-size:12px;margin-top:26px;border-top:1px solid #C9C9C4;padding-top:8px;">
       I conteggi riguardano le attività <strong>assegnate</strong> nel periodo, non quelle
-      risolte: l'app registra le segnalazioni inviate agli uffici, non l'esito degli
+      risolte: l’app registra le segnalazioni inviate agli uffici, non l’esito degli
       interventi.<br>
       Messaggio generato automaticamente da StoreScout.
     </p>
