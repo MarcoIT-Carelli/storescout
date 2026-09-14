@@ -725,6 +725,21 @@ L'emulatore `StoreScout_Tablet` esiste ancora e le istruzioni sono in fondo al `
 Se torna in uso, la prima cosa da rifare è un giro di tutte le schermate a larghezza ridotta:
 era il lato non collaudato, e ha nascosto difetti per mesi.
 
+### Che cosa sta nella cartella, e cosa no
+
+`android/` è **generata** da `npx expo prebuild --platform android` e pesa 1,2 GB: non è
+versionata e non va conservata. Si ricrea quando serve compilare in locale, cosa che con
+EAS Build non capita quasi mai. Stessa cosa per `dist/` (esportazione di `eas update`) e
+`.expo/`.
+
+Restano invece, e sono sorgenti vere citate dal codice:
+
+- `logo.jpg` — da cui si genera il data URI in `src/pdf/logoAziendale.ts`
+- `animazione per code/logo-storescout-statico.svg` — da cui viene il tracciato in `src/lib/logo.ts`
+- `animazione per code/anteprima.html` — l'animazione di apertura ricostruita in `SplashAnimation.tsx`
+- `assets/` — icone e splash dichiarate in `app.json`
+- `@carelli-distribuzione__storescout.jks` — copia della chiave di firma, coperta da `.gitignore`
+
 ### Collaudo prima del rilascio
 
 Provare l'app **da installazione pulita**, non solo su una già avviata:
