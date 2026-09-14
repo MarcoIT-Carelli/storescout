@@ -1,6 +1,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts';
 import { encodeBase64 } from 'jsr:@std/encoding@1/base64';
+
+import { LIMITE_ALLEGATI_BYTE, spedisci, type Allegato } from '../_shared/posta.ts';
 
 /**
  * Invio della scheda compilata ai destinatari previsti (§8 della specifica).
@@ -40,54 +41,6 @@ const CHIAVE_SERVIZIO = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
  */
 const CHIAVE_SISTEMA = Deno.env.get('SISTEMA_SECRET') ?? '';
 
-const SMTP_HOST = Deno.env.get('SMTP_HOST') ?? '';
-const SMTP_PORT = Number(Deno.env.get('SMTP_PORT') ?? '465');
-const SMTP_USER = Deno.env.get('SMTP_USER') ?? '';
-const SMTP_PASS = Deno.env.get('SMTP_PASS') ?? '';
-const SMTP_FROM = Deno.env.get('SMTP_FROM') || SMTP_USER;
-
-/**
- * TLS implicito sulla 465, STARTTLS altrove.
- *
- * Aruba accetta entrambe le strade — 465 con TLS dall'inizio, 587 che parte in chiaro e
- * si cifra subito dopo — e quale delle due funzioni meglio non si sa finché non la si
- * prova. Legandolo alla porta, cambiare strada è cambiare un secret e basta, senza
- * toccare il codice né rimettere mano al deploy.
- */
-const SMTP_TLS_IMPLICITO = SMTP_PORT === 465;
-
-/**
- * Pausa fra un messaggio e il successivo della stessa scheda.
- *
- * Una conclusione può far partire quattro o cinque messaggi — la scheda completa più un
- * estratto per ufficio — e spedirli tutti nello stesso secondo è il modo più rapido per
- * incontrare i limiti di frequenza del server di posta. Mezzo secondo l'uno non si nota
- * in negozio e distribuisce le richieste.
- */
-const PAUSA_FRA_INVII_MS = 500;
-
-const attendi = (ms: number) => new Promise((esegui) => setTimeout(esegui, ms));
-
-/**
- * Abbandona un'attesa che non finisce.
- *
- * Un server di posta che non risponde tiene il worker fino al limite della piattaforma,
- * che lo uccide con un `546 WORKER_RESOURCE_LIMIT`: all'ispettore arriverebbe quel
- * codice al posto di una spiegazione, e la scheda resterebbe senza nemmeno un tentativo
- * registrato in `invii_email`.
- */
-function conScadenza<T>(lavoro: Promise<T>, secondi: number, cosa: string): Promise<T> {
-  return Promise.race([
-    lavoro,
-    new Promise<never>((_, rifiuta) =>
-      setTimeout(
-        () => rifiuta(new Error(`${cosa}: il server di posta non ha risposto entro ${secondi} secondi`)),
-        secondi * 1000,
-      ),
-    ),
-  ]);
-}
-
 /** Sempre in copia, da §8.1 della specifica. */
 const COPIA_FISSA = ['contact2@carellidistribuzione.it', 'a.andriani@carellidistribuzione.it'];
 
@@ -113,16 +66,6 @@ type RigaAttivita = {
   id: string;
   destinatari: { id: string; nome: string; email: string | null; richiede_verifica: boolean } | null;
 };
-
-/**
- * Tetto agli allegati del messaggio, PDF e foto insieme.
- *
- * Aruba accetta fino a 25 MB, ma la codifica base64 aggiunge circa un terzo: quindici
- * megabyte di file diventano una ventina di messaggio. L'app blocca già la conclusione
- * oltre questa soglia; qui il controllo si ripete perché una scheda vecchia rispedita a
- * mano non passa da quella validazione.
- */
-const LIMITE_ALLEGATI_BYTE = 15 * 1024 * 1024;
 
 type FotoArchiviata = { path: string; byte: number; ordine: number; attivita_id: string };
 
@@ -308,13 +251,7 @@ Deno.serve(async (req) => {
      * e chi lo riceve deve sapere che cosa manca.
      */
     let pesoAllegati = bytesPdf.byteLength;
-    const allegatiFoto: {
-      filename: string;
-      content: string;
-      encoding: 'base64';
-      contentType: string;
-      perUfficio: string | undefined;
-    }[] = [];
+    const allegatiFoto: (Allegato & { perUfficio: string | undefined })[] = [];
     let omesse = 0;
 
     for (const [indice, f] of foto.entries()) {
@@ -332,10 +269,8 @@ Deno.serve(async (req) => {
       const bytesFoto = new Uint8Array(await immagine.arrayBuffer());
       pesoAllegati += bytesFoto.byteLength;
       allegatiFoto.push({
-        filename: `Foto_${ispezione.numero}_${indice + 1}.jpg`,
-        content: encodeBase64(bytesFoto),
-        encoding: 'base64',
-        contentType: 'image/jpeg',
+        nome: `Foto_${ispezione.numero}_${indice + 1}.jpg`,
+        base64: encodeBase64(bytesFoto),
         perUfficio: ufficioDellAttivita.get(f.attivita_id),
       });
     }
@@ -358,41 +293,25 @@ Deno.serve(async (req) => {
     }
     const corpoCompleto = [corpo, ...coda].join('\n');
 
-    const client = new SMTPClient({
-      connection: {
-        hostname: SMTP_HOST,
-        port: SMTP_PORT,
-        tls: SMTP_TLS_IMPLICITO,
-        auth: { username: SMTP_USER, password: SMTP_PASS },
-      },
+    await spedisci({
+      a: destinatariA,
+      cc,
+      oggetto,
+      testo: corpoCompleto,
+      allegati: [
+        {
+          nome: `Scheda_${ispezione.numero}_${pdv.codice}_${ispezione.data_ispezione}.pdf`,
+          base64: allegato,
+        },
+        ...allegatiFoto.map(({ perUfficio: _, ...a }) => a),
+      ],
     });
 
-    await conScadenza(
-      client.send({
-      from: `StoreScout <${SMTP_FROM}>`,
-      to: destinatariA,
-      cc,
-      subject: oggetto,
-      content: corpoCompleto,
-      attachments: [
-        {
-          filename: `Scheda_${ispezione.numero}_${pdv.codice}_${ispezione.data_ispezione}.pdf`,
-          content: allegato,
-          encoding: 'base64' as const,
-          contentType: 'application/pdf',
-        },
-        ...allegatiFoto.map(({ perUfficio: _, ...allegato }) => allegato),
-      ],
-      }),
-      25,
-      'Invio della scheda',
-    );
     /**
      * Poi un messaggio per ufficio, ciascuno con il suo estratto.
      *
-     * Mail separate e non una sola con più allegati: finché il messaggio è uno, chi è
-     * in copia apre anche gli allegati degli altri, e la separazione sarebbe solo
-     * apparente.
+     * Messaggi separati e non uno solo con più allegati: finché il messaggio è uno, chi è
+     * in copia apre anche gli allegati degli altri, e la separazione sarebbe apparente.
      *
      * Il percorso dell'estratto si ricostruisce dal nome del PDF completo più l'id del
      * destinatario, la stessa regola che l'app usa per salvarlo.
@@ -407,17 +326,14 @@ Deno.serve(async (req) => {
         const { data: estratto, error: erroreEstratto } = await servizio.storage
           .from('schede')
           .download(percorso);
-        if (erroreEstratto || !estratto) throw new Error(erroreEstratto?.message ?? 'estratto assente');
+        if (erroreEstratto || !estratto) {
+          throw new Error(erroreEstratto?.message ?? 'estratto assente');
+        }
 
-        const suoiAllegati = allegatiFoto
-          .filter((a) => a.perUfficio === destinatarioId)
-          .map(({ perUfficio: _, ...allegato }) => allegato);
-
-        await client.send({
-          from: `StoreScout <${SMTP_FROM}>`,
-          to: [ufficio.email],
-          subject: `${oggetto} — ${ufficio.nome}`,
-          content: [
+        await spedisci({
+          a: [ufficio.email],
+          oggetto: `${oggetto} — ${ufficio.nome}`,
+          testo: [
             `Scheda attività ispettore n. ${ispezione.numero} — estratto per ${ufficio.nome}`,
             '',
             `Punto vendita: ${pdv.codice} — ${pdv.citta}, ${pdv.indirizzo}`,
@@ -428,14 +344,14 @@ Deno.serve(async (req) => {
             '',
             '— Messaggio generato automaticamente da StoreScout.',
           ].join('\n'),
-          attachments: [
+          allegati: [
             {
-              filename: `Scheda_${ispezione.numero}_${pdv.codice}_${ufficio.nome.replace(/[^A-Za-z0-9]+/g, '_')}.pdf`,
-              content: encodeBase64(new Uint8Array(await estratto.arrayBuffer())),
-              encoding: 'base64' as const,
-              contentType: 'application/pdf',
+              nome: `Scheda_${ispezione.numero}_${pdv.codice}_${ufficio.nome.replace(/[^A-Za-z0-9]+/g, '_')}.pdf`,
+              base64: encodeBase64(new Uint8Array(await estratto.arrayBuffer())),
             },
-            ...suoiAllegati,
+            ...allegatiFoto
+              .filter((a) => a.perUfficio === destinatarioId)
+              .map(({ perUfficio: _, ...a }) => a),
           ],
         });
         estrattiInviati.push(ufficio.nome);
@@ -446,8 +362,6 @@ Deno.serve(async (req) => {
         console.error(`Estratto per ${ufficio.nome} non inviato:`, e);
       }
     }
-
-    await client.close();
 
     await registra('inviata', null);
     return risposta({

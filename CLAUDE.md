@@ -467,6 +467,31 @@ Function girano su infrastruttura condivisa senza indirizzi fissi**, quindi non 
 da mettere fra le eccezioni. L'aumento va chiesto sull'account, o si passa a un servizio di
 invio dedicato.
 
+### Le email non passano più da SMTP
+
+`supabase/functions/_shared/posta.ts`. L'invio usa l'**API di Brevo**, non più `denomailer`
+via SMTP Aruba.
+
+Il motivo sta in una riga di log: `CPU Time exceeded`, **3094 millisecondi consumati** su
+circa 2000 concessi. Stabilire una connessione SMTP cifrata è crittografia pesante eseguita
+in JavaScript, e per una Edge Function è troppo. All'inizio passava per un soffio — cinque
+report spediti — poi ha smesso, e da lì ogni invio moriva con un `546` che sembrava un
+blocco di Aruba e non lo era.
+
+Ci sono volute ore per arrivarci perché il `546` è opaco: il worker viene ucciso **prima**
+di qualunque errore applicativo, quindi nessun `try/catch` lo vede e nessun timeout scatta.
+La strada che ha funzionato è stata la bisezione con sonde (`?ping=1`, `?prova=dati`,
+`?prova=html`), che ha escluso letture, aggregazioni e composizione e ha lasciato solo
+l'invio.
+
+**Brevo e non un servizio americano**: i messaggi portano firme di persone fisiche e nomi di
+dipendenti, e il progetto tiene i dati in UE — è lo stesso motivo per cui il database sta a
+Francoforte. Il volume regge: 300 messaggi al giorno gratuiti contro gli 80-100 che servono.
+
+I secret SMTP restano impostati ma non sono più letti, tranne `SMTP_FROM` che fa da
+indirizzo mittente. Il tetto agli allegati scende a **7 MB**: Brevo ne accetta 10, e il
+conto si fa sui byte del file mentre in base64 viaggia un terzo in più.
+
 ### L'invio ritenta da solo
 
 `supabase/functions/invia-arretrate`, chiamata ogni venti minuti da una GitHub Action.
