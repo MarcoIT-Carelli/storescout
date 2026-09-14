@@ -536,6 +536,12 @@ giusta**. Quell'«ed è già salvato» è la parte che conta: se il download di 
 il file resta dov'è e si riproverà domani. Meglio occupare spazio in più che cancellare
 l'unica copia rimasta.
 
+Sul PC di backup si copiano tre file — `archivia.mjs`, `archivia.bat`, `installa-attivita.bat`
+— più un `.env` accanto a loro. Il `.bat` esiste perché l'Utilità di pianificazione non ha un
+modo affidabile di impostare la cartella di lavoro, e senza quella lo script parte da
+`C:\Windows\System32`, non trova il `.env` e si ferma; in più tiene un `archivia.log`, che di
+un'attività notturna è l'unica traccia di cosa è successo.
+
 Si autentica con **email e password di un utente dell'app**, non con la chiave di servizio:
 per leggere i file bastano i permessi di un ispettore, e una chiave che scavalca ogni regola
 non ha motivo di stare su un PC d'ufficio.
