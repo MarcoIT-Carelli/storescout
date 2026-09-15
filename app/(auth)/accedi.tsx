@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Keyboard,
   ScrollView,
@@ -25,26 +25,35 @@ export default function Accedi() {
   const { height } = useWindowDimensions();
 
   /**
-   * Con la tastiera aperta il contenuto non può più stare centrato.
+   * Quanto spazio si prende la tastiera, misurato.
    *
-   * Android restringe la finestra, e un contenitore centrato ricentra quel poco che
-   * resta: in orizzontale il campo password finiva sotto la tastiera, irraggiungibile
-   * perché non c'era niente da scorrere. Ancorandolo in alto, lo scorrimento torna a
-   * funzionare e il campo si raggiunge.
+   * Su Android 15, con il disegno a tutto schermo che questa app usa, **la finestra non
+   * si restringe più** quando la tastiera compare: le si sovrappone e basta. Lo
+   * scorrimento quindi non ha niente in più da offrire, e il campo password resta sotto,
+   * irraggiungibile — che è esattamente il difetto segnalato.
    *
-   * `KeyboardAvoidingView` qui non serviva: il suo `behavior` era condizionato a iOS,
-   * e questa app esiste solo per Android.
+   * L'unica strada che funziona è misurare la tastiera e riservarle altrettanto spazio
+   * in fondo al contenuto. `KeyboardAvoidingView` non basta, perché il suo
+   * `behavior` presuppone il vecchio ridimensionamento.
    */
-  const [tastieraAperta, setTastieraAperta] = useState(false);
+  const [altezzaTastiera, setAltezzaTastiera] = useState(0);
+  const scorrevole = useRef<ScrollView>(null);
 
   useEffect(() => {
-    const su = Keyboard.addListener('keyboardDidShow', () => setTastieraAperta(true));
-    const giu = Keyboard.addListener('keyboardDidHide', () => setTastieraAperta(false));
+    const su = Keyboard.addListener('keyboardDidShow', (evento) => {
+      setAltezzaTastiera(evento.endCoordinates.height);
+      // Il pannello è corto: portarlo in fondo mette i campi sopra la tastiera senza
+      // doverli inseguire uno per uno.
+      requestAnimationFrame(() => scorrevole.current?.scrollToEnd({ animated: true }));
+    });
+    const giu = Keyboard.addListener('keyboardDidHide', () => setAltezzaTastiera(0));
     return () => {
       su.remove();
       giu.remove();
     };
   }, []);
+
+  const tastieraAperta = altezzaTastiera > 0;
 
   // Sotto i 500 punti ci si sta in piedi soltanto: è il tablet in orizzontale, dove il
   // marchio è la prima cosa a cui rinunciare per fare spazio ai campi.
@@ -75,8 +84,18 @@ export default function Accedi() {
   return (
     <Schermata>
       <ScrollView
-        contentContainerStyle={[stili.centro, tastieraAperta && stili.ancorato]}
+        ref={scorrevole}
+        contentContainerStyle={[
+          stili.centro,
+          tastieraAperta && stili.ancorato,
+          // Lo spazio che la tastiera occupa, restituito al contenuto come margine:
+          // senza, non c'è niente da scorrere e i campi restano coperti.
+          tastieraAperta && { paddingBottom: altezzaTastiera + spazio.lg },
+        ]}
         keyboardShouldPersistTaps="handled"
+        // Trascinare non deve chiudere la tastiera: si scorre proprio per raggiungere
+        // il campo che si sta compilando.
+        keyboardDismissMode="none"
         showsVerticalScrollIndicator={false}
       >
         {tastieraAperta && schermoBasso ? null : (
@@ -165,7 +184,7 @@ const stili = StyleSheet.create({
     gap: spazio.xl,
   },
   /** Con la tastiera aperta il contenuto parte dall'alto, così si può scorrere. */
-  ancorato: { justifyContent: 'flex-start', paddingBottom: spazio.xxxl },
+  ancorato: { justifyContent: 'flex-start' },
   marchio: { alignItems: 'center' },
   pannello: {
     width: '100%',
