@@ -8,6 +8,7 @@ import { TextField } from '@/components/TextField';
 import { useBozza } from '@/hooks/useBozza';
 import { useListe } from '@/hooks/useListe';
 import { SOGLIA_LARGA, raggio, spazio, testo, useColori } from '@/theme';
+import { useTastiera } from '@/hooks/useTastiera';
 
 export default function Firme() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -17,6 +18,7 @@ export default function Firme() {
   const stretto = width < SOGLIA_LARGA;
 
   const { pdvPerId } = useListe();
+  const tastiera = useTastiera();
   const { bozza, caricamento, modifica, salvaSubito } = useBozza(id);
 
   if (caricamento || !bozza) {
@@ -47,7 +49,10 @@ export default function Firme() {
       sottotitolo={pdv ? `${pdv.codice} — ${pdv.citta}` : undefined}
       indietro
     >
-      <ScrollView contentContainerStyle={stili.corpo} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={[stili.corpo, { paddingBottom: spazio.xxl + tastiera }]}
+        keyboardShouldPersistTaps="handled"
+      >
         <Text style={[testo.piccolo, { color: c.testoSecondario }]}>
           Raccogli la firma dell’ispettore e quella del responsabile del punto vendita. Se il
           responsabile non è presente, indica il motivo: la scheda resta valida.

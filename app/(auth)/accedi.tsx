@@ -1,12 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import {
-  Keyboard,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { BannerStato, INATTIVO, type StatoOperazione } from '@/components/BannerStato';
 import { Button } from '@/components/Button';
@@ -16,6 +9,7 @@ import { TextField } from '@/components/TextField';
 import { supabaseConfigurato } from '@/lib/env';
 import { messaggioErrore } from '@/lib/errori';
 import { useAuth } from '@/hooks/useAuth';
+import { useTastiera } from '@/hooks/useTastiera';
 import { raggio, spazio, testo, useColori } from '@/theme';
 
 export default function Accedi() {
@@ -24,36 +18,17 @@ export default function Accedi() {
 
   const { height } = useWindowDimensions();
 
-  /**
-   * Quanto spazio si prende la tastiera, misurato.
-   *
-   * Su Android 15, con il disegno a tutto schermo che questa app usa, **la finestra non
-   * si restringe più** quando la tastiera compare: le si sovrappone e basta. Lo
-   * scorrimento quindi non ha niente in più da offrire, e il campo password resta sotto,
-   * irraggiungibile — che è esattamente il difetto segnalato.
-   *
-   * L'unica strada che funziona è misurare la tastiera e riservarle altrettanto spazio
-   * in fondo al contenuto. `KeyboardAvoidingView` non basta, perché il suo
-   * `behavior` presuppone il vecchio ridimensionamento.
-   */
-  const [altezzaTastiera, setAltezzaTastiera] = useState(0);
+  const altezzaTastiera = useTastiera();
+  const tastieraAperta = altezzaTastiera > 0;
   const scorrevole = useRef<ScrollView>(null);
 
+  // Il pannello è corto: portarlo in fondo mette i campi sopra la tastiera senza doverli
+  // inseguire uno per uno.
   useEffect(() => {
-    const su = Keyboard.addListener('keyboardDidShow', (evento) => {
-      setAltezzaTastiera(evento.endCoordinates.height);
-      // Il pannello è corto: portarlo in fondo mette i campi sopra la tastiera senza
-      // doverli inseguire uno per uno.
-      requestAnimationFrame(() => scorrevole.current?.scrollToEnd({ animated: true }));
-    });
-    const giu = Keyboard.addListener('keyboardDidHide', () => setAltezzaTastiera(0));
-    return () => {
-      su.remove();
-      giu.remove();
-    };
-  }, []);
-
-  const tastieraAperta = altezzaTastiera > 0;
+    if (!tastieraAperta) return;
+    const attesa = requestAnimationFrame(() => scorrevole.current?.scrollToEnd({ animated: true }));
+    return () => cancelAnimationFrame(attesa);
+  }, [tastieraAperta]);
 
   // Sotto i 500 punti ci si sta in piedi soltanto: è il tablet in orizzontale, dove il
   // marchio è la prima cosa a cui rinunciare per fare spazio ai campi.

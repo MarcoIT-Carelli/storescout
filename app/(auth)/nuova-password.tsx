@@ -10,6 +10,7 @@ import { ForzaPassword } from '@/components/ForzaPassword';
 import { useAuth } from '@/hooks/useAuth';
 import { messaggioErrore } from '@/lib/errori';
 import { raggio, spazio, testo, useColori } from '@/theme';
+import { useTastiera } from '@/hooks/useTastiera';
 
 const LUNGHEZZA_MINIMA = 8;
 
@@ -17,6 +18,7 @@ export default function NuovaPassword() {
   const c = useColori();
   const router = useRouter();
   const { cambiaPassword, profilo, esci } = useAuth();
+  const tastiera = useTastiera();
 
   // Al primo accesso la password temporanea è appena stata digitata per entrare:
   // richiederla di nuovo sarebbe solo un ostacolo. Negli altri casi va verificata,
@@ -55,7 +57,7 @@ export default function NuovaPassword() {
 
   return (
     <Schermata titolo={forzato ? undefined : 'Cambia password'} indietro={!forzato}>
-      <ScrollView contentContainerStyle={stili.centro} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[stili.centro, { paddingBottom: spazio.xl + tastiera }]} keyboardShouldPersistTaps="handled">
         <View style={[stili.pannello, { backgroundColor: c.superficie, borderColor: c.bordo }]}>
           <Text style={[testo.sezione, { color: c.testo }]}>
             {forzato ? 'Scegli una nuova password' : 'Cambia la tua password'}

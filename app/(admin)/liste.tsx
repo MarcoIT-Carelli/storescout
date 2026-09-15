@@ -23,12 +23,14 @@ import {
   type Voce,
 } from '@/lib/liste';
 import { raggio, spazio, testo, TOCCO_MIN, useColori } from '@/theme';
+import { useTastiera } from '@/hooks/useTastiera';
 
 const TABELLE: Tabella[] = ['destinatari', 'reparti', 'tipi_intervento'];
 
 export default function ListeValori() {
   const c = useColori();
   const { aggiorna: aggiornaCacheListe } = useListe();
+  const tastiera = useTastiera();
 
   const [tabella, setTabella] = useState<Tabella>('destinatari');
   const [trascinando, setTrascinando] = useState(false);
@@ -170,7 +172,7 @@ export default function ListeValori() {
       </View>
 
       <ScrollView
-        contentContainerStyle={stili.corpo}
+        contentContainerStyle={[stili.corpo, { paddingBottom: spazio.xxxl + tastiera }]}
         keyboardShouldPersistTaps="handled"
         scrollEnabled={!trascinando}
       >

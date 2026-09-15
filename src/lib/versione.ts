@@ -10,7 +10,7 @@
  * La regola quindi è: `version` si alza solo quando si distribuisce un APK nuovo,
  * `REVISIONE` a ogni aggiornamento via rete.
  */
-export const REVISIONE = '1.2.1';
+export const REVISIONE = '1.2.2';
 
 /**
  * Che cosa è cambiato, per revisione. Compare una volta sola dopo l'aggiornamento.
@@ -20,6 +20,9 @@ export const REVISIONE = '1.2.1';
  * senza voci non mostra niente.
  */
 export const NOVITA: Record<string, string[]> = {
+  '1.2.2': [
+    'La tastiera non copre più i campi in nessuna schermata: scheda, firme, cambio password e pannello di amministrazione si spostano per farle posto.',
+  ],
   '1.2.1': [
     'Sull’accesso la tastiera non copre più la password: la schermata le fa posto sul serio, e trascinando non si chiude più.',
   ],

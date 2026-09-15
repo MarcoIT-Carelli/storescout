@@ -111,6 +111,29 @@ Riaprire la tastiera richiede un `blur()` seguito da `focus()`: Android valuta
 ha alcun effetto. Il `blur()` intermedio non va scambiato per un'uscita dal campo, altrimenti
 la modalità penna si riattiva un istante dopo averla tolta.
 
+### La tastiera non restringe più la finestra
+
+Su Android 15, con il disegno a tutto schermo che questa app usa, **la finestra non si
+ridimensiona all'apertura della tastiera**: la tastiera si sovrappone al contenuto e basta.
+Uno `ScrollView` non ha quindi niente in più da scorrere, e un campo che finisce sotto
+resta irraggiungibile — è successo sul campo password dell'accesso, dove in orizzontale
+non c'era modo di scrivere, e trascinare serviva solo a far sparire la tastiera.
+
+`KeyboardAvoidingView` non risolve, perché il suo `behavior` presuppone il vecchio
+ridimensionamento; il primo tentativo di correzione è fallito proprio per questo. L'unica
+strada che funziona è **misurare la tastiera e restituire altrettanto spazio** al contenuto,
+con `useTastiera()`:
+
+```tsx
+const tastiera = useTastiera();
+<ScrollView contentContainerStyle={[stili.corpo, { paddingBottom: spazio.xxl + tastiera }]}>
+```
+
+**Ogni schermata nuova con campi di testo che possano trovarsi in basso deve farlo.** Oggi
+lo fanno accesso, cambio password, scheda, firme, ispettori, liste valori e punti vendita.
+Sull'accesso, dove il pannello è corto e centrato, si aggiunge uno scorrimento automatico
+in fondo e il marchio sparisce sotto i 500 punti di altezza.
+
 **Il giallo non è mai colore di testo su fondo chiaro.** Solo riempimento con testo nero sopra,
 o marchio su fondo nero. Gli usi ammessi sono cinque, e non se ne aggiungono altri senza
 motivo: pulsante primario, indicatore di ispezione in corso, marchio, **testata delle

@@ -25,6 +25,7 @@ import {
 } from '@/lib/ispettori';
 import type { Profilo, RuoloUtente } from '@/types/database';
 import { raggio, spazio, testo, TOCCO_MIN, useColori } from '@/theme';
+import { useTastiera } from '@/hooks/useTastiera';
 
 const RUOLI = [
   { id: 'ispettore', nome: 'Ispettore' },
@@ -46,6 +47,7 @@ export default function Ispettori() {
   const c = useColori();
   const { profilo: io } = useAuth();
   const { liste, pdvPerId } = useListe();
+  const tastiera = useTastiera();
 
   const [ispettori, setIspettori] = useState<Profilo[]>([]);
   const [assegnazioni, setAssegnazioni] = useState<Map<string, number>>(new Map());
@@ -190,7 +192,8 @@ export default function Ispettori() {
 
   return (
     <Schermata titolo="Ispettori" sottotitolo="Chi può accedere all’app" indietro>
-      <ScrollView contentContainerStyle={stili.corpo} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[stili.corpo, { paddingBottom: spazio.xxxl + tastiera }]}
+        keyboardShouldPersistTaps="handled">
         <BannerStato stato={stato} onRiprova={carica} onChiudi={() => setStato(INATTIVO)} />
 
         {credenziali ? (

@@ -21,6 +21,7 @@ import {
 } from '@/lib/pdvAdmin';
 import type { Pdv } from '@/types/database';
 import { raggio, spazio, testo, TOCCO_MIN, useColori } from '@/theme';
+import { useTastiera } from '@/hooks/useTastiera';
 
 type Modulo = {
   progressivo: string;
@@ -73,6 +74,7 @@ const perDatabase = (m: Modulo) => ({
 export default function PuntiVendita() {
   const c = useColori();
   const { aggiorna: aggiornaCacheListe } = useListe();
+  const tastiera = useTastiera();
 
   const [pdv, setPdv] = useState<Pdv[]>([]);
   const [caricamento, setCaricamento] = useState(true);
@@ -214,7 +216,8 @@ export default function PuntiVendita() {
         />
       </View>
 
-      <ScrollView contentContainerStyle={stili.corpo} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[stili.corpo, { paddingBottom: spazio.xxxl + tastiera }]}
+        keyboardShouldPersistTaps="handled">
         <BannerStato stato={stato} onRiprova={carica} onChiudi={() => setStato(INATTIVO)} />
 
         {piano ? (

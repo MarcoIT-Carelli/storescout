@@ -31,6 +31,7 @@ import {
   type RigaAttivita,
 } from '@/types/bozza';
 import { raggio, spazio, testo, TOCCO_MIN, SOGLIA_LARGA, useColori } from '@/theme';
+import { useTastiera } from '@/hooks/useTastiera';
 
 export default function Scheda() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -40,6 +41,7 @@ export default function Scheda() {
   const stretto = width < SOGLIA_LARGA;
 
   const { liste, pdvPerId } = useListe();
+  const tastiera = useTastiera();
   const { bozza, caricamento, salvataAlle, modifica, salvaSubito, scarta } = useBozza(id);
 
   const [stato, setStato] = useState<StatoOperazione>(INATTIVO);
@@ -184,7 +186,7 @@ export default function Scheda() {
       </View>
 
       <ScrollView
-        contentContainerStyle={stili.corpo}
+        contentContainerStyle={[stili.corpo, { paddingBottom: spazio.xxl + tastiera }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
