@@ -1,5 +1,12 @@
-import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import {
+  Keyboard,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { BannerStato, INATTIVO, type StatoOperazione } from '@/components/BannerStato';
 import { Button } from '@/components/Button';
@@ -14,6 +21,34 @@ import { raggio, spazio, testo, useColori } from '@/theme';
 export default function Accedi() {
   const c = useColori();
   const { accedi, disattivato } = useAuth();
+
+  const { height } = useWindowDimensions();
+
+  /**
+   * Con la tastiera aperta il contenuto non può più stare centrato.
+   *
+   * Android restringe la finestra, e un contenitore centrato ricentra quel poco che
+   * resta: in orizzontale il campo password finiva sotto la tastiera, irraggiungibile
+   * perché non c'era niente da scorrere. Ancorandolo in alto, lo scorrimento torna a
+   * funzionare e il campo si raggiunge.
+   *
+   * `KeyboardAvoidingView` qui non serviva: il suo `behavior` era condizionato a iOS,
+   * e questa app esiste solo per Android.
+   */
+  const [tastieraAperta, setTastieraAperta] = useState(false);
+
+  useEffect(() => {
+    const su = Keyboard.addListener('keyboardDidShow', () => setTastieraAperta(true));
+    const giu = Keyboard.addListener('keyboardDidHide', () => setTastieraAperta(false));
+    return () => {
+      su.remove();
+      giu.remove();
+    };
+  }, []);
+
+  // Sotto i 500 punti ci si sta in piedi soltanto: è il tablet in orizzontale, dove il
+  // marchio è la prima cosa a cui rinunciare per fare spazio ai campi.
+  const schermoBasso = height < 500;
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -39,18 +74,16 @@ export default function Accedi() {
 
   return (
     <Schermata>
-      <KeyboardAvoidingView
-        style={stili.pieno}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      <ScrollView
+        contentContainerStyle={[stili.centro, tastieraAperta && stili.ancorato]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <ScrollView
-          contentContainerStyle={stili.centro}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
+        {tastieraAperta && schermoBasso ? null : (
           <View style={stili.marchio}>
-            <Logo larghezza={132} colore={c.marchio} conScritta />
+            <Logo larghezza={schermoBasso ? 96 : 132} colore={c.marchio} conScritta />
           </View>
+        )}
 
           <View style={[stili.pannello, { backgroundColor: c.superficie, borderColor: c.bordo }]}>
             <Text style={[testo.sezione, { color: c.testo }]}>Accedi</Text>
@@ -113,17 +146,17 @@ export default function Accedi() {
             </View>
           ) : null}
 
+        {tastieraAperta ? null : (
           <Text style={[testo.etichetta, { color: c.testoSecondario, fontWeight: '400' }]}>
             Carelli Distribuzione — Area Vendite
           </Text>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        )}
+      </ScrollView>
     </Schermata>
   );
 }
 
 const stili = StyleSheet.create({
-  pieno: { flex: 1 },
   centro: {
     flexGrow: 1,
     alignItems: 'center',
@@ -131,6 +164,8 @@ const stili = StyleSheet.create({
     padding: spazio.xl,
     gap: spazio.xl,
   },
+  /** Con la tastiera aperta il contenuto parte dall'alto, così si può scorrere. */
+  ancorato: { justifyContent: 'flex-start', paddingBottom: spazio.xxxl },
   marchio: { alignItems: 'center' },
   pannello: {
     width: '100%',

@@ -72,12 +72,24 @@ export default function IspezioniAdmin() {
   const [daEliminare, setDaEliminare] = useState<string | null>(null);
   const [daRinviare, setDaRinviare] = useState<string | null>(null);
   const [stato, setStato] = useState<StatoOperazione>(INATTIVO);
+  /**
+   * I filtri partono chiusi.
+   *
+   * Aperti occupano metà schermo e su un elenco lungo non resta niente da leggere: qui
+   * dentro si viene per guardare le ispezioni, non per impostare filtri, e quelle volte
+   * che servono bastano due tocchi. La ricerca invece resta sempre in vista, perché è
+   * quella che si usa davvero per trovare una scheda.
+   */
+  const [filtriAperti, setFiltriAperti] = useState(false);
 
   const cambia = <K extends keyof Filtri>(chiave: K, valore: Filtri[K]) =>
     setFiltri((f) => ({ ...f, [chiave]: valore }));
 
   const filtriAttivi =
     Boolean(ricerca.trim()) || Object.values(filtri).some((v) => v !== null);
+
+  /** Quanti filtri sono impostati: va detto, visto che stanno chiusi. */
+  const quantiFiltri = Object.values(filtri).filter((v) => v !== null).length;
 
   /** `silenzioso` tiene in vista l'esito dell'azione appena compiuta. */
   const carica = useCallback(
@@ -236,51 +248,85 @@ export default function IspezioniAdmin() {
           ]}
         />
 
-        <View style={[stili.riga, stretto && stili.colonna]}>
-          <Select
-            contenitore={stretto ? undefined : LARGO}
-            etichetta="Punto vendita"
-            opzioni={opzioniPdv}
-            valore={filtri.pdvId}
-            onChange={(v) => cambia('pdvId', v)}
-            segnaposto="Tutti"
-          />
-          <Select
-            contenitore={stretto ? undefined : LARGO}
-            etichetta="Ispettore"
-            opzioni={opzioniIspettori}
-            valore={filtri.ispettoreId}
-            onChange={(v) => cambia('ispettoreId', v)}
-            segnaposto="Tutti"
-          />
-        </View>
-
-        <View style={[stili.riga, stretto && stili.colonna]}>
-          <Select
-            contenitore={stretto ? undefined : LARGO}
-            etichetta="Stato"
-            opzioni={STATI}
-            valore={filtri.stato}
-            onChange={(v) => cambia('stato', v as StatoIspezione | null)}
-            segnaposto="Qualsiasi"
-          />
-          <CampoData contenitore={stretto ? undefined : LARGO} etichetta="Dal" valore={filtri.da} onChange={(d) => cambia('da', d)} />
-          <CampoData contenitore={stretto ? undefined : LARGO} etichetta="Al" valore={filtri.a} onChange={(d) => cambia('a', d)} />
-        </View>
-
-        {filtriAttivi ? (
+        <View style={stili.barraFiltri}>
           <Pressable
-            onPress={() => {
-              setFiltri(FILTRI_VUOTI);
-              setRicerca('');
-            }}
-            style={stili.azzera}
+            onPress={() => setFiltriAperti((v) => !v)}
             accessibilityRole="button"
+            accessibilityState={{ expanded: filtriAperti }}
+            style={({ pressed }) => [
+              stili.pulsanteFiltri,
+              {
+                borderColor: quantiFiltri > 0 ? c.nero : c.bordo,
+                backgroundColor: pressed ? c.superficieAlt : c.superficie,
+              },
+            ]}
           >
-            <Text style={[testo.piccolo, { color: c.testo, textDecorationLine: 'underline' }]}>
-              Azzera i filtri
+            <Text style={[testo.corpoForte, { color: c.testo }]}>
+              {filtriAperti ? 'Nascondi filtri' : 'Filtri'}
+              {quantiFiltri > 0 ? ` (${quantiFiltri})` : ''}
             </Text>
           </Pressable>
+
+          {filtriAttivi ? (
+            <Pressable
+              onPress={() => {
+                setFiltri(FILTRI_VUOTI);
+                setRicerca('');
+              }}
+              style={stili.azzera}
+              accessibilityRole="button"
+            >
+              <Text style={[testo.piccolo, { color: c.testo, textDecorationLine: 'underline' }]}>
+                Azzera
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+
+        {filtriAperti ? (
+          <>
+            <View style={[stili.riga, stretto && stili.colonna]}>
+              <Select
+                contenitore={stretto ? undefined : LARGO}
+                etichetta="Punto vendita"
+                opzioni={opzioniPdv}
+                valore={filtri.pdvId}
+                onChange={(v) => cambia('pdvId', v)}
+                segnaposto="Tutti"
+              />
+              <Select
+                contenitore={stretto ? undefined : LARGO}
+                etichetta="Ispettore"
+                opzioni={opzioniIspettori}
+                valore={filtri.ispettoreId}
+                onChange={(v) => cambia('ispettoreId', v)}
+                segnaposto="Tutti"
+              />
+            </View>
+
+            <View style={[stili.riga, stretto && stili.colonna]}>
+              <Select
+                contenitore={stretto ? undefined : LARGO}
+                etichetta="Stato"
+                opzioni={STATI}
+                valore={filtri.stato}
+                onChange={(v) => cambia('stato', v as StatoIspezione | null)}
+                segnaposto="Qualsiasi"
+              />
+              <CampoData
+                contenitore={stretto ? undefined : LARGO}
+                etichetta="Dal"
+                valore={filtri.da}
+                onChange={(d) => cambia('da', d)}
+              />
+              <CampoData
+                contenitore={stretto ? undefined : LARGO}
+                etichetta="Al"
+                valore={filtri.a}
+                onChange={(d) => cambia('a', d)}
+              />
+            </View>
+          </>
         ) : null}
       </View>
 
@@ -443,7 +489,15 @@ const stili = StyleSheet.create({
   },
   riga: { flexDirection: 'row', gap: spazio.md, alignItems: 'flex-end' },
   colonna: { flexDirection: 'column', alignItems: 'stretch' },
-  azzera: { minHeight: TOCCO_MIN, justifyContent: 'center', alignSelf: 'flex-start' },
+  azzera: { minHeight: TOCCO_MIN, justifyContent: 'center' },
+  barraFiltri: { flexDirection: 'row', alignItems: 'center', gap: spazio.md },
+  pulsanteFiltri: {
+    minHeight: TOCCO_MIN,
+    paddingHorizontal: spazio.lg,
+    borderWidth: 1,
+    borderRadius: raggio.md,
+    justifyContent: 'center',
+  },
   elenco: { padding: spazio.lg, paddingBottom: spazio.xxxl },
   voce: { flexDirection: 'row', alignItems: 'center', gap: spazio.md },
   sigla: {
